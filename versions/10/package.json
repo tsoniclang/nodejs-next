@@ -1,0 +1,34 @@
+{
+  "name": "@tsonic/nodejs",
+  "version": "10.0.49-next.0",
+  "description": "Native Tsonic implementation of Node.js APIs",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./index.js": "./src/index.ts",
+    "./path.js": "./src/path-module.ts",
+    "./process.js": "./src/process-module.ts"
+  },
+  "files": [
+    "src/**/*.ts",
+    "tsonic/package-manifest.json",
+    "README.md"
+  ],
+  "keywords": [
+    "nodejs",
+    "tsonic",
+    "typescript",
+    "source-package",
+    "native"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tsoniclang/nodejs-next.git"
+  },
+  "dependencies": {
+    "@tsonic/core": "10.0.40",
+    "@tsonic/dotnet": "10.0.40",
+    "@tsonic/js": "10.0.48"
+  }
+}

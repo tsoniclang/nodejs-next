@@ -1,0 +1,9 @@
+import "./arch.test.ts";
+import "./argv.test.ts";
+import "./chdir.test.ts";
+import "./cwd.test.ts";
+import "./exec-path.test.ts";
+import "./exit-code.test.ts";
+import "./pid.test.ts";
+import "./platform.test.ts";
+import "./version.test.ts";
