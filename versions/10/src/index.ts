@@ -25,7 +25,9 @@ import {
 } from "./process-module.ts";
 import { AssertionError } from "./assertion-error.ts";
 import * as assert from "./assert-module.ts";
+import { Buffer } from "./buffer/index.ts";
 import { console, Console, ConsoleConstructor } from "./console-module.ts";
+import { fs, FsModuleNamespace, FsPromises, promises as fsPromises, Stats } from "./fs-module.ts";
 import {
   clearImmediate,
   clearInterval,
@@ -46,6 +48,7 @@ export {
   assert,
   AssertionError,
   basename,
+  Buffer,
   clearImmediate,
   clearInterval,
   clearTimeout,
@@ -57,7 +60,11 @@ export {
   events,
   EventEmitter,
   extname,
+  fs,
+  fsPromises,
   format,
+  FsModuleNamespace,
+  FsPromises,
   Immediate,
   isAbsolute,
   join,
@@ -77,6 +84,7 @@ export {
   setImmediate,
   setInterval,
   setTimeout,
+  Stats,
   toNamespacedPath,
   Timeout,
   TimersPromises,
