@@ -1,13 +1,13 @@
 import { attributes as A } from "@tsonic/core/lang.js";
 import { Assert, FactAttribute } from "xunit-types/Xunit.js";
 
-import * as net from "@tsonic/nodejs/net.js";
+import { connect, Socket } from "@tsonic/nodejs/net.js";
 
 export class NetConnectTests {
   public connect_creates_socket(): void {
-    const socket = net.connect(18234, "localhost");
+    const socket: Socket = connect(18234, "localhost");
     Assert.NotNull(socket);
-    Assert.True(socket instanceof net.Socket);
+    Assert.True(socket instanceof Socket);
   }
 }
 

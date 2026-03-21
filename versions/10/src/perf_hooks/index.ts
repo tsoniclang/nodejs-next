@@ -34,12 +34,36 @@ export {
 export type { MarkOptions, MeasureOptions } from "./performance.ts";
 
 import * as performanceModule from "./performance.ts";
+import type { MarkOptions, MeasureOptions } from "./performance.ts";
+import type {
+  PerformanceEntry,
+  PerformanceMark,
+  PerformanceMeasure,
+} from "./performance-entry.ts";
+
+type PerformanceApi = {
+  now: () => number;
+  mark: (name: string, options?: MarkOptions | null) => PerformanceMark;
+  measure: (
+    name: string,
+    startOrOptions?: string | MeasureOptions | null,
+    endMark?: string | null,
+  ) => PerformanceMeasure;
+  getEntries: () => PerformanceEntry[];
+  getEntriesByName: (
+    name: string,
+    type?: string | null,
+  ) => PerformanceEntry[];
+  getEntriesByType: (type: string) => PerformanceEntry[];
+  clearMarks: (name?: string | null) => void;
+  clearMeasures: (name?: string | null) => void;
+};
 
 /**
  * The performance object — a namespace-like re-export of the performance functions
  * matching Node.js `perf_hooks.performance`.
  */
-export const performance = {
+export const performance: PerformanceApi = {
   now: performanceModule.now,
   mark: performanceModule.mark,
   measure: performanceModule.measure,

@@ -786,47 +786,46 @@ export class Buffer {
 
   /**
    * Reads a 64-bit unsigned integer at offset, little-endian.
-   * Returns a BigInt.
    */
-  readBigUInt64LE(offset: number = 0): bigint {
+  readBigUInt64LE(offset: number = 0): ulong {
     const bytes = copyRange(this._data, offset, offset + 8);
     const normalized = needsEndianSwap(true) ? reverseCopy(bytes) : bytes;
-    return BitConverter.ToUInt64(toByteArray(normalized), 0) as unknown as bigint;
+    return BitConverter.ToUInt64(toByteArray(normalized), 0);
   }
 
-  readBigUint64LE(offset: number = 0): bigint {
+  readBigUint64LE(offset: number = 0): ulong {
     return this.readBigUInt64LE(offset);
   }
 
   /**
    * Reads a 64-bit signed integer at offset, little-endian.
    */
-  readBigInt64LE(offset: number = 0): bigint {
+  readBigInt64LE(offset: number = 0): long {
     const bytes = copyRange(this._data, offset, offset + 8);
     const normalized = needsEndianSwap(true) ? reverseCopy(bytes) : bytes;
-    return BitConverter.ToInt64(toByteArray(normalized), 0) as unknown as bigint;
+    return BitConverter.ToInt64(toByteArray(normalized), 0);
   }
 
   /**
    * Reads a 64-bit unsigned integer at offset, big-endian.
    */
-  readBigUInt64BE(offset: number = 0): bigint {
+  readBigUInt64BE(offset: number = 0): ulong {
     const bytes = copyRange(this._data, offset, offset + 8);
     const normalized = needsEndianSwap(false) ? reverseCopy(bytes) : bytes;
-    return BitConverter.ToUInt64(toByteArray(normalized), 0) as unknown as bigint;
+    return BitConverter.ToUInt64(toByteArray(normalized), 0);
   }
 
-  readBigUint64BE(offset: number = 0): bigint {
+  readBigUint64BE(offset: number = 0): ulong {
     return this.readBigUInt64BE(offset);
   }
 
   /**
    * Reads a 64-bit signed integer at offset, big-endian.
    */
-  readBigInt64BE(offset: number = 0): bigint {
+  readBigInt64BE(offset: number = 0): long {
     const bytes = copyRange(this._data, offset, offset + 8);
     const normalized = needsEndianSwap(false) ? reverseCopy(bytes) : bytes;
-    return BitConverter.ToInt64(toByteArray(normalized), 0) as unknown as bigint;
+    return BitConverter.ToInt64(toByteArray(normalized), 0);
   }
 
   /**
@@ -1033,25 +1032,25 @@ export class Buffer {
   /**
    * Writes a 64-bit unsigned integer at offset, little-endian.
    */
-  writeBigUInt64LE(value: bigint, offset: number = 0): number {
+  writeBigUInt64LE(value: ulong, offset: number = 0): number {
     const raw = toUint8Array(
-      BitConverter.GetBytes(value as unknown as ulong),
+      BitConverter.GetBytes(value),
     );
     const bytes = needsEndianSwap(true) ? reverseCopy(raw) : raw;
     copyInto(bytes, 0, bytes.length, this._data, offset);
     return offset + 8;
   }
 
-  writeBigUint64LE(value: bigint, offset: number = 0): number {
+  writeBigUint64LE(value: ulong, offset: number = 0): number {
     return this.writeBigUInt64LE(value, offset);
   }
 
   /**
    * Writes a 64-bit signed integer at offset, little-endian.
    */
-  writeBigInt64LE(value: bigint, offset: number = 0): number {
+  writeBigInt64LE(value: long, offset: number = 0): number {
     const raw = toUint8Array(
-      BitConverter.GetBytes(value as unknown as long),
+      BitConverter.GetBytes(value),
     );
     const bytes = needsEndianSwap(true) ? reverseCopy(raw) : raw;
     copyInto(bytes, 0, bytes.length, this._data, offset);
@@ -1061,25 +1060,25 @@ export class Buffer {
   /**
    * Writes a 64-bit unsigned integer at offset, big-endian.
    */
-  writeBigUInt64BE(value: bigint, offset: number = 0): number {
+  writeBigUInt64BE(value: ulong, offset: number = 0): number {
     const raw = toUint8Array(
-      BitConverter.GetBytes(value as unknown as ulong),
+      BitConverter.GetBytes(value),
     );
     const bytes = needsEndianSwap(false) ? reverseCopy(raw) : raw;
     copyInto(bytes, 0, bytes.length, this._data, offset);
     return offset + 8;
   }
 
-  writeBigUint64BE(value: bigint, offset: number = 0): number {
+  writeBigUint64BE(value: ulong, offset: number = 0): number {
     return this.writeBigUInt64BE(value, offset);
   }
 
   /**
    * Writes a 64-bit signed integer at offset, big-endian.
    */
-  writeBigInt64BE(value: bigint, offset: number = 0): number {
+  writeBigInt64BE(value: long, offset: number = 0): number {
     const raw = toUint8Array(
-      BitConverter.GetBytes(value as unknown as long),
+      BitConverter.GetBytes(value),
     );
     const bytes = needsEndianSwap(false) ? reverseCopy(raw) : raw;
     copyInto(bytes, 0, bytes.length, this._data, offset);
