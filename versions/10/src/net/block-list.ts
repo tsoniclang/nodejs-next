@@ -100,8 +100,13 @@ const isInSubnet = (
     return false;
   }
 
-  const fullBytes: int = JSMath.floor(prefix / 8) as int;
-  const remainingBits = prefix % 8;
+  let fullBytes: int = 0;
+  let remainingBits = prefix;
+
+  while (remainingBits >= 8) {
+    fullBytes = fullBytes + 1;
+    remainingBits -= 8;
+  }
 
   for (let i = 0; i < fullBytes; i = i + 1) {
     if (addrOctets[i] !== networkOctets[i]) {

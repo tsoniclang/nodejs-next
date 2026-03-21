@@ -22,74 +22,93 @@ import {
   base64UrlToBase64,
 } from "./buffer-encoding.ts";
 
-const copyRange = (source: Uint8Array, start: int, end: int): Uint8Array => {
-  const safeStart = start < 0 ? 0 : start;
-  const safeEnd = end < safeStart ? safeStart : end;
-  const result = new Uint8Array(safeEnd - safeStart);
-  for (let index = 0; index < result.length; index += 1) {
-    result[index] = source[safeStart + index]!;
+class BufferInternals {
+  static copyRange(
+    source: Uint8Array,
+    start: number,
+    end: number,
+  ): Uint8Array {
+    const safeStart = start < 0 ? 0 : start;
+    const safeEnd = end < safeStart ? safeStart : end;
+    const result = new Uint8Array(safeEnd - safeStart);
+    let targetIndex = 0;
+    for (let index = 0; index < source.length; index += 1) {
+      if (index < safeStart || index >= safeEnd) {
+        continue;
+      }
+      result[targetIndex] = source[index]!;
+      targetIndex += 1;
+    }
+    return result;
   }
-  return result;
-};
 
-const copyInto = (
-  source: Uint8Array,
-  sourceStart: int,
-  sourceEnd: int,
-  target: Uint8Array,
-  targetStart: int,
-): void => {
-  for (let index = sourceStart; index < sourceEnd; index += 1) {
-    target[targetStart + (index - sourceStart)] = source[index]!;
-  }
-};
-
-const toByteArray = (bytes: Uint8Array): number[] => {
-  const result: number[] = [];
-  for (let index = 0; index < bytes.length; index += 1) {
-    result.push(bytes[index]!);
-  }
-  return result;
-};
-
-const toUint8Array = (bytes: number[]): Uint8Array => {
-  const result = new Uint8Array(bytes.length);
-  for (let index = 0; index < bytes.length; index += 1) {
-    result[index] = bytes[index]!;
-  }
-  return result;
-};
-
-const reverseCopy = (bytes: Uint8Array): Uint8Array => {
-  const result = new Uint8Array(bytes.length);
-  for (let index = 0; index < bytes.length; index += 1) {
-    result[index] = bytes[bytes.length - 1 - index]!;
-  }
-  return result;
-};
-
-const needsEndianSwap = (littleEndian: boolean): boolean =>
-  BitConverter.IsLittleEndian !== littleEndian;
-
-const pow256 = (exponent: number): number => JSMath.pow(256, exponent);
-
-const pow2 = (exponent: number): number => JSMath.pow(2, exponent);
-
-const stripWhitespace = (value: string): string => {
-  let result = "";
-  for (let index = 0; index < value.length; index += 1) {
-    const char = value.charAt(index);
-    if (
-      char !== " " &&
-      char !== "\n" &&
-      char !== "\r" &&
-      char !== "\t"
-    ) {
-      result += char;
+  static copyInto(
+    source: Uint8Array,
+    sourceStart: number,
+    sourceEnd: number,
+    target: Uint8Array,
+    targetStart: int,
+  ): void {
+    const copied = BufferInternals.copyRange(source, sourceStart, sourceEnd);
+    let writeIndex: int = targetStart;
+    for (let index = 0; index < copied.length; index += 1) {
+      target[writeIndex] = copied[index]!;
+      writeIndex += 1;
     }
   }
-  return result;
-};
+
+  static toByteArray(bytes: Uint8Array): number[] {
+    const result: number[] = [];
+    for (let index = 0; index < bytes.length; index += 1) {
+      result.push(bytes[index]!);
+    }
+    return result;
+  }
+
+  static toUint8Array(bytes: number[]): Uint8Array {
+    const result = new Uint8Array(bytes.length);
+    for (let index = 0; index < bytes.length; index += 1) {
+      result[index] = bytes[index]!;
+    }
+    return result;
+  }
+
+  static reverseCopy(bytes: Uint8Array): Uint8Array {
+    const result = new Uint8Array(bytes.length);
+    for (let index = 0; index < bytes.length; index += 1) {
+      result[index] = bytes[bytes.length - 1 - index]!;
+    }
+    return result;
+  }
+
+  static needsEndianSwap(littleEndian: boolean): boolean {
+    return BitConverter.IsLittleEndian !== littleEndian;
+  }
+
+  static pow256(exponent: number): number {
+    return JSMath.pow(256, exponent);
+  }
+
+  static pow2(exponent: number): number {
+    return JSMath.pow(2, exponent);
+  }
+
+  static stripWhitespace(value: string): string {
+    let result = "";
+    for (let index = 0; index < value.length; index += 1) {
+      const char = value.charAt(index);
+      if (
+        char !== " " &&
+        char !== "\n" &&
+        char !== "\r" &&
+        char !== "\t"
+      ) {
+        result += char;
+      }
+    }
+    return result;
+  }
+}
 
 export class Buffer {
   /** The underlying typed array. */
@@ -316,7 +335,7 @@ export class Buffer {
       if (offset >= len) break;
       const buf = list[i]!;
       const copyLen = Math.min(buf.length, len - offset);
-      copyInto(buf._data, 0, copyLen, result._data, offset);
+      BufferInternals.copyInto(buf._data, 0, copyLen, result._data, offset);
       offset += copyLen;
     }
 
@@ -418,11 +437,10 @@ export class Buffer {
     if (searchBytes === null) return -1;
     if (searchBytes.length === 0) return offset;
 
-    for (
-      let i = Math.min(offset, this.length - searchBytes.length);
-      i >= 0;
-      i -= 1
-    ) {
+    for (let i = offset; i >= 0; i -= 1) {
+      if (i + searchBytes.length > this.length) {
+        continue;
+      }
       let found = true;
       for (let j = 0; j < searchBytes.length; j += 1) {
         if (this._data[i + j] !== searchBytes[j]) {
@@ -504,7 +522,7 @@ export class Buffer {
 
     const sliceLen = endIndex - startIndex;
     const newData = new Uint8Array(sliceLen);
-    copyInto(this._data, startIndex, endIndex, newData, 0);
+    BufferInternals.copyInto(this._data, startIndex, endIndex, newData, 0);
     return new Buffer(newData);
   }
 
@@ -520,7 +538,7 @@ export class Buffer {
    */
   copy(
     target: Buffer,
-    targetStart: number = 0,
+    targetStart: int = 0,
     sourceStart?: int,
     sourceEnd?: int,
   ): number {
@@ -535,7 +553,13 @@ export class Buffer {
     const bytesToCopy = Math.min(srcEnd - srcStart, target.length - targetStart);
     if (bytesToCopy <= 0) return 0;
 
-    copyInto(this._data, srcStart, srcStart + bytesToCopy, target._data, targetStart);
+    BufferInternals.copyInto(
+      this._data,
+      srcStart,
+      srcStart + bytesToCopy,
+      target._data,
+      targetStart
+    );
     return bytesToCopy;
   }
 
@@ -590,7 +614,7 @@ export class Buffer {
 
     const bytes = stringToBytes(str, encoding);
     const bytesToWrite = Math.min(bytes.length, maxLength);
-    copyInto(bytes, 0, bytesToWrite, this._data, offset);
+    BufferInternals.copyInto(bytes, 0, bytesToWrite, this._data, offset);
     return bytesToWrite;
   }
 
@@ -752,45 +776,55 @@ export class Buffer {
    * Reads a float (32-bit) at offset, little-endian.
    */
   readFloatLE(offset: int = 0): number {
-    const bytes = copyRange(this._data, offset, offset + 4);
-    const normalized = needsEndianSwap(true) ? reverseCopy(bytes) : bytes;
-    return BitConverter.ToSingle(toByteArray(normalized), 0);
+    const bytes = BufferInternals.copyRange(this._data, offset, offset + 4);
+    const normalized = BufferInternals.needsEndianSwap(true)
+      ? BufferInternals.reverseCopy(bytes)
+      : bytes;
+    return BitConverter.ToSingle(BufferInternals.toByteArray(normalized), 0);
   }
 
   /**
    * Reads a float (32-bit) at offset, big-endian.
    */
   readFloatBE(offset: int = 0): number {
-    const bytes = copyRange(this._data, offset, offset + 4);
-    const normalized = needsEndianSwap(false) ? reverseCopy(bytes) : bytes;
-    return BitConverter.ToSingle(toByteArray(normalized), 0);
+    const bytes = BufferInternals.copyRange(this._data, offset, offset + 4);
+    const normalized = BufferInternals.needsEndianSwap(false)
+      ? BufferInternals.reverseCopy(bytes)
+      : bytes;
+    return BitConverter.ToSingle(BufferInternals.toByteArray(normalized), 0);
   }
 
   /**
    * Reads a double (64-bit) at offset, little-endian.
    */
   readDoubleLE(offset: int = 0): number {
-    const bytes = copyRange(this._data, offset, offset + 8);
-    const normalized = needsEndianSwap(true) ? reverseCopy(bytes) : bytes;
-    return BitConverter.ToDouble(toByteArray(normalized), 0);
+    const bytes = BufferInternals.copyRange(this._data, offset, offset + 8);
+    const normalized = BufferInternals.needsEndianSwap(true)
+      ? BufferInternals.reverseCopy(bytes)
+      : bytes;
+    return BitConverter.ToDouble(BufferInternals.toByteArray(normalized), 0);
   }
 
   /**
    * Reads a double (64-bit) at offset, big-endian.
    */
   readDoubleBE(offset: int = 0): number {
-    const bytes = copyRange(this._data, offset, offset + 8);
-    const normalized = needsEndianSwap(false) ? reverseCopy(bytes) : bytes;
-    return BitConverter.ToDouble(toByteArray(normalized), 0);
+    const bytes = BufferInternals.copyRange(this._data, offset, offset + 8);
+    const normalized = BufferInternals.needsEndianSwap(false)
+      ? BufferInternals.reverseCopy(bytes)
+      : bytes;
+    return BitConverter.ToDouble(BufferInternals.toByteArray(normalized), 0);
   }
 
   /**
    * Reads a 64-bit unsigned integer at offset, little-endian.
    */
   readBigUInt64LE(offset: int = 0): ulong {
-    const bytes = copyRange(this._data, offset, offset + 8);
-    const normalized = needsEndianSwap(true) ? reverseCopy(bytes) : bytes;
-    return BitConverter.ToUInt64(toByteArray(normalized), 0);
+    const bytes = BufferInternals.copyRange(this._data, offset, offset + 8);
+    const normalized = BufferInternals.needsEndianSwap(true)
+      ? BufferInternals.reverseCopy(bytes)
+      : bytes;
+    return BitConverter.ToUInt64(BufferInternals.toByteArray(normalized), 0);
   }
 
   readBigUint64LE(offset: int = 0): ulong {
@@ -801,18 +835,22 @@ export class Buffer {
    * Reads a 64-bit signed integer at offset, little-endian.
    */
   readBigInt64LE(offset: int = 0): long {
-    const bytes = copyRange(this._data, offset, offset + 8);
-    const normalized = needsEndianSwap(true) ? reverseCopy(bytes) : bytes;
-    return BitConverter.ToInt64(toByteArray(normalized), 0);
+    const bytes = BufferInternals.copyRange(this._data, offset, offset + 8);
+    const normalized = BufferInternals.needsEndianSwap(true)
+      ? BufferInternals.reverseCopy(bytes)
+      : bytes;
+    return BitConverter.ToInt64(BufferInternals.toByteArray(normalized), 0);
   }
 
   /**
    * Reads a 64-bit unsigned integer at offset, big-endian.
    */
   readBigUInt64BE(offset: int = 0): ulong {
-    const bytes = copyRange(this._data, offset, offset + 8);
-    const normalized = needsEndianSwap(false) ? reverseCopy(bytes) : bytes;
-    return BitConverter.ToUInt64(toByteArray(normalized), 0);
+    const bytes = BufferInternals.copyRange(this._data, offset, offset + 8);
+    const normalized = BufferInternals.needsEndianSwap(false)
+      ? BufferInternals.reverseCopy(bytes)
+      : bytes;
+    return BitConverter.ToUInt64(BufferInternals.toByteArray(normalized), 0);
   }
 
   readBigUint64BE(offset: int = 0): ulong {
@@ -823,9 +861,11 @@ export class Buffer {
    * Reads a 64-bit signed integer at offset, big-endian.
    */
   readBigInt64BE(offset: int = 0): long {
-    const bytes = copyRange(this._data, offset, offset + 8);
-    const normalized = needsEndianSwap(false) ? reverseCopy(bytes) : bytes;
-    return BitConverter.ToInt64(toByteArray(normalized), 0);
+    const bytes = BufferInternals.copyRange(this._data, offset, offset + 8);
+    const normalized = BufferInternals.needsEndianSwap(false)
+      ? BufferInternals.reverseCopy(bytes)
+      : bytes;
+    return BitConverter.ToInt64(BufferInternals.toByteArray(normalized), 0);
   }
 
   /**
@@ -837,7 +877,7 @@ export class Buffer {
     }
     let value = 0;
     for (let i = 0; i < byteLength; i += 1) {
-      value += this._data[offset + i]! * pow256(i);
+      value += this._data[offset + i]! * BufferInternals.pow256(i);
     }
     return value;
   }
@@ -855,12 +895,12 @@ export class Buffer {
     }
     let value = 0;
     for (let i = 0; i < byteLength; i += 1) {
-      value += this._data[offset + i]! * pow256(i);
+      value += this._data[offset + i]! * BufferInternals.pow256(i);
     }
     // Sign extend
-    const limit = pow2(byteLength * 8 - 1);
+    const limit = BufferInternals.pow2(byteLength * 8 - 1);
     if (value >= limit) {
-      value -= pow2(byteLength * 8);
+      value -= BufferInternals.pow2(byteLength * 8);
     }
     return value;
   }
@@ -894,9 +934,9 @@ export class Buffer {
     for (let i = 0; i < byteLength; i += 1) {
       value = value * 256 + this._data[offset + i]!;
     }
-    const limit = pow2(byteLength * 8 - 1);
+    const limit = BufferInternals.pow2(byteLength * 8 - 1);
     if (value >= limit) {
-      value -= pow2(byteLength * 8);
+      value -= BufferInternals.pow2(byteLength * 8);
     }
     return value;
   }
@@ -993,9 +1033,11 @@ export class Buffer {
    * Writes a float (32-bit) at offset, little-endian.
    */
   writeFloatLE(value: number, offset: int = 0): number {
-    const raw = toUint8Array(BitConverter.GetBytes(value));
-    const bytes = needsEndianSwap(true) ? reverseCopy(raw) : raw;
-    copyInto(bytes, 0, bytes.length, this._data, offset);
+    const raw = BufferInternals.toUint8Array(BitConverter.GetBytes(value));
+    const bytes = BufferInternals.needsEndianSwap(true)
+      ? BufferInternals.reverseCopy(raw)
+      : raw;
+    BufferInternals.copyInto(bytes, 0, bytes.length, this._data, offset);
     return offset + 4;
   }
 
@@ -1003,9 +1045,11 @@ export class Buffer {
    * Writes a float (32-bit) at offset, big-endian.
    */
   writeFloatBE(value: number, offset: int = 0): number {
-    const raw = toUint8Array(BitConverter.GetBytes(value));
-    const bytes = needsEndianSwap(false) ? reverseCopy(raw) : raw;
-    copyInto(bytes, 0, bytes.length, this._data, offset);
+    const raw = BufferInternals.toUint8Array(BitConverter.GetBytes(value));
+    const bytes = BufferInternals.needsEndianSwap(false)
+      ? BufferInternals.reverseCopy(raw)
+      : raw;
+    BufferInternals.copyInto(bytes, 0, bytes.length, this._data, offset);
     return offset + 4;
   }
 
@@ -1013,9 +1057,11 @@ export class Buffer {
    * Writes a double (64-bit) at offset, little-endian.
    */
   writeDoubleLE(value: number, offset: int = 0): number {
-    const raw = toUint8Array(BitConverter.GetBytes(value));
-    const bytes = needsEndianSwap(true) ? reverseCopy(raw) : raw;
-    copyInto(bytes, 0, bytes.length, this._data, offset);
+    const raw = BufferInternals.toUint8Array(BitConverter.GetBytes(value));
+    const bytes = BufferInternals.needsEndianSwap(true)
+      ? BufferInternals.reverseCopy(raw)
+      : raw;
+    BufferInternals.copyInto(bytes, 0, bytes.length, this._data, offset);
     return offset + 8;
   }
 
@@ -1023,9 +1069,11 @@ export class Buffer {
    * Writes a double (64-bit) at offset, big-endian.
    */
   writeDoubleBE(value: number, offset: int = 0): number {
-    const raw = toUint8Array(BitConverter.GetBytes(value));
-    const bytes = needsEndianSwap(false) ? reverseCopy(raw) : raw;
-    copyInto(bytes, 0, bytes.length, this._data, offset);
+    const raw = BufferInternals.toUint8Array(BitConverter.GetBytes(value));
+    const bytes = BufferInternals.needsEndianSwap(false)
+      ? BufferInternals.reverseCopy(raw)
+      : raw;
+    BufferInternals.copyInto(bytes, 0, bytes.length, this._data, offset);
     return offset + 8;
   }
 
@@ -1033,11 +1081,13 @@ export class Buffer {
    * Writes a 64-bit unsigned integer at offset, little-endian.
    */
   writeBigUInt64LE(value: ulong, offset: int = 0): number {
-    const raw = toUint8Array(
+    const raw = BufferInternals.toUint8Array(
       BitConverter.GetBytes(value),
     );
-    const bytes = needsEndianSwap(true) ? reverseCopy(raw) : raw;
-    copyInto(bytes, 0, bytes.length, this._data, offset);
+    const bytes = BufferInternals.needsEndianSwap(true)
+      ? BufferInternals.reverseCopy(raw)
+      : raw;
+    BufferInternals.copyInto(bytes, 0, bytes.length, this._data, offset);
     return offset + 8;
   }
 
@@ -1049,11 +1099,13 @@ export class Buffer {
    * Writes a 64-bit signed integer at offset, little-endian.
    */
   writeBigInt64LE(value: long, offset: int = 0): number {
-    const raw = toUint8Array(
+    const raw = BufferInternals.toUint8Array(
       BitConverter.GetBytes(value),
     );
-    const bytes = needsEndianSwap(true) ? reverseCopy(raw) : raw;
-    copyInto(bytes, 0, bytes.length, this._data, offset);
+    const bytes = BufferInternals.needsEndianSwap(true)
+      ? BufferInternals.reverseCopy(raw)
+      : raw;
+    BufferInternals.copyInto(bytes, 0, bytes.length, this._data, offset);
     return offset + 8;
   }
 
@@ -1061,11 +1113,13 @@ export class Buffer {
    * Writes a 64-bit unsigned integer at offset, big-endian.
    */
   writeBigUInt64BE(value: ulong, offset: int = 0): number {
-    const raw = toUint8Array(
+    const raw = BufferInternals.toUint8Array(
       BitConverter.GetBytes(value),
     );
-    const bytes = needsEndianSwap(false) ? reverseCopy(raw) : raw;
-    copyInto(bytes, 0, bytes.length, this._data, offset);
+    const bytes = BufferInternals.needsEndianSwap(false)
+      ? BufferInternals.reverseCopy(raw)
+      : raw;
+    BufferInternals.copyInto(bytes, 0, bytes.length, this._data, offset);
     return offset + 8;
   }
 
@@ -1077,11 +1131,13 @@ export class Buffer {
    * Writes a 64-bit signed integer at offset, big-endian.
    */
   writeBigInt64BE(value: long, offset: int = 0): number {
-    const raw = toUint8Array(
+    const raw = BufferInternals.toUint8Array(
       BitConverter.GetBytes(value),
     );
-    const bytes = needsEndianSwap(false) ? reverseCopy(raw) : raw;
-    copyInto(bytes, 0, bytes.length, this._data, offset);
+    const bytes = BufferInternals.needsEndianSwap(false)
+      ? BufferInternals.reverseCopy(raw)
+      : raw;
+    BufferInternals.copyInto(bytes, 0, bytes.length, this._data, offset);
     return offset + 8;
   }
 
@@ -1111,7 +1167,7 @@ export class Buffer {
     if (byteLength < 1 || byteLength > 6) {
       throw new RangeError("byteLength must be between 1 and 6");
     }
-    let v = value < 0 ? value + pow2(byteLength * 8) : value;
+    let v = value < 0 ? value + BufferInternals.pow2(byteLength * 8) : value;
     for (let i = 0; i < byteLength; i += 1) {
       this._data[offset + i] = v & 0xff;
       v = JSMath.floor(v / 256);
@@ -1145,7 +1201,7 @@ export class Buffer {
     if (byteLength < 1 || byteLength > 6) {
       throw new RangeError("byteLength must be between 1 and 6");
     }
-    let v = value < 0 ? value + pow2(byteLength * 8) : value;
+    let v = value < 0 ? value + BufferInternals.pow2(byteLength * 8) : value;
     for (let i = byteLength - 1; i >= 0; i -= 1) {
       this._data[offset + i] = v & 0xff;
       v = JSMath.floor(v / 256);
@@ -1172,7 +1228,7 @@ export class Buffer {
   }
 
   private writeHex(hex: string, offset: int, maxLength: int): number {
-    const cleaned = stripWhitespace(hex);
+    const cleaned = BufferInternals.stripWhitespace(hex);
     const bytesToWrite = Math.min(JSMath.floor(cleaned.length / 2), maxLength);
     for (let i = 0; i < bytesToWrite; i += 1) {
       this._data[offset + i] = parseInt(cleaned.substring(i * 2, i * 2 + 2), 16);
@@ -1190,7 +1246,7 @@ export class Buffer {
       ? base64ToBytes(base64UrlToBase64(b64))
       : base64ToBytes(b64);
     const bytesToWrite = Math.min(decoded.length, maxLength);
-    copyInto(decoded, 0, bytesToWrite, this._data, offset);
+    BufferInternals.copyInto(decoded, 0, bytesToWrite, this._data, offset);
     return bytesToWrite;
   }
 }

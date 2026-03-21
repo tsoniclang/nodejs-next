@@ -8,7 +8,6 @@
  * zlib / brotli via CompressionStream/DecompressionStream where available,
  * with TODO placeholders for sync variants that require native bindings.
  */
-
 import type { BrotliOptions } from "./brotli-options.ts";
 import type { ZlibOptions } from "./zlib-options.ts";
 import { stringToBytes } from "../buffer/buffer-encoding.ts";
@@ -17,20 +16,20 @@ import { stringToBytes } from "../buffer/buffer-encoding.ts";
 // CRC-32 table (computed once, standard IEEE polynomial 0xEDB88320)
 // ---------------------------------------------------------------------------
 
-const buildCrc32Table = (): readonly number[] => {
-  const table: number[] = [];
+const buildCrc32Table = (): Map<string, number> => {
+  const table = new Map<string, number>();
   const polynomial = 0xedb88320;
   for (let i = 0; i < 256; i += 1) {
     let crc = i;
     for (let j = 0; j < 8; j += 1) {
       crc = (crc & 1) === 1 ? (crc >>> 1) ^ polynomial : crc >>> 1;
     }
-    table.push(crc >>> 0);
+    table.set(String(i), crc >>> 0);
   }
   return table;
 };
 
-const CRC32_TABLE: readonly number[] = buildCrc32Table();
+const CRC32_TABLE: Map<string, number> = buildCrc32Table();
 
 // ---------------------------------------------------------------------------
 // crc32
@@ -72,7 +71,8 @@ export const crc32String = (data: string, value: number = 0): number => {
 const computeCrc32 = (data: Uint8Array, crc: number): number => {
   let current = crc;
   for (let i = 0; i < data.length; i += 1) {
-    current = (current >>> 8) ^ CRC32_TABLE[(current ^ data[i]!) & 0xff]!;
+    const tableIndex = String((current ^ data[i]!) & 0xff);
+    current = (current >>> 8) ^ (CRC32_TABLE.get(tableIndex) ?? 0);
   }
   return ~current;
 };
