@@ -8,9 +8,6 @@ import { isWindows } from "./helpers.ts";
 export class ToNamespacedPathTests {
   public toNamespacedPath_handles_empty_path(): void {
     Assert.Equal("", nodePath.toNamespacedPath(""));
-  }
-
-  public toNamespacedPath_matches_platform_expectation(): void {
     const input = "foo/bar";
     const output = nodePath.toNamespacedPath(input);
 
@@ -25,7 +22,4 @@ export class ToNamespacedPathTests {
 
 A.on(ToNamespacedPathTests)
   .method((t) => t.toNamespacedPath_handles_empty_path)
-  .add(FactAttribute);
-A.on(ToNamespacedPathTests)
-  .method((t) => t.toNamespacedPath_matches_platform_expectation)
   .add(FactAttribute);

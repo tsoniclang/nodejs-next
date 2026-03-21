@@ -1,3 +1,7 @@
+import {
+  EventEmitter,
+  process as nodeProcess,
+} from "@tsonic/nodejs/index.js";
 import * as nodePath from "@tsonic/nodejs/path.js";
 
 const runPathSmoke = (): string => {
@@ -16,5 +20,16 @@ const runPathSmoke = (): string => {
 
 export async function main(): Promise<void> {
   const pathResult = runPathSmoke();
-  console.log(pathResult);
+  const emitter = new EventEmitter();
+  let eventSeen = false;
+  emitter.on("ready", () => {
+    eventSeen = true;
+  });
+  emitter.emit("ready");
+
+  if (!eventSeen || !nodeProcess.version.startsWith("v")) {
+    throw new Error("process or events smoke failed");
+  }
+
+  console.log(`${pathResult};events-ok;process-ok`);
 }

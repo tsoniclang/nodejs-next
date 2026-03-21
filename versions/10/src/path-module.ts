@@ -191,3 +191,66 @@ export const toNamespacedPath = (value: string): string => {
 
   return `\\\\?\\${fullPath}`;
 };
+
+export class PathModuleNamespace {
+  public get sep(): string {
+    return sep;
+  }
+
+  public get delimiter(): string {
+    return delimiter;
+  }
+
+  public basename(value: string, suffix?: string): string {
+    return basename(value, suffix);
+  }
+
+  public dirname(value: string): string {
+    return dirname(value);
+  }
+
+  public extname(value: string): string {
+    return extname(value);
+  }
+
+  public join(...values: string[]): string {
+    return join(...values);
+  }
+
+  public normalize(value: string): string {
+    return normalize(value);
+  }
+
+  public resolve(...values: string[]): string {
+    return resolve(...values);
+  }
+
+  public isAbsolute(value: string): boolean {
+    return isAbsolute(value);
+  }
+
+  public relative(from: string, to: string): string {
+    return relative(from, to);
+  }
+
+  public parse(value: string): ParsedPath {
+    return parse(value);
+  }
+
+  public format(value: ParsedPath): string {
+    return format(value);
+  }
+
+  public matchesGlob(value: string, pattern: string): boolean {
+    return matchesGlob(value, pattern);
+  }
+
+  public toNamespacedPath(value: string): string {
+    return toNamespacedPath(value);
+  }
+}
+
+const namespace = new PathModuleNamespace();
+
+export const posix = namespace;
+export const win32 = namespace;

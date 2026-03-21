@@ -1,6 +1,6 @@
 import type { int } from "@tsonic/core/types.js";
 
-export type EventListener = (...args: unknown[]) => unknown;
+export type EventListener = (...args: unknown[]) => void;
 
 type ListenerRegistration = {
   readonly original: EventListener;
@@ -22,6 +22,21 @@ const throwUnhandledError = (value: unknown): never => {
 
 export class EventEmitter {
   private static _defaultMaxListeners: int = 10 as int;
+
+  public static once(
+    emitter: EventEmitter,
+    eventName: string
+  ): Promise<unknown[]> {
+    if (emitter === undefined || emitter === null) {
+      throw new Error("EventEmitter.once requires an emitter");
+    }
+
+    if (eventName === undefined || eventName === null || eventName.length === 0) {
+      throw new Error("EventEmitter.once requires a non-empty event name");
+    }
+
+    return once(emitter, eventName);
+  }
 
   private readonly listenersByEvent: Map<string, ListenerRegistration[]> =
     new Map<string, ListenerRegistration[]>();
@@ -255,15 +270,24 @@ export const getMaxListeners = (emitter: EventEmitter): int =>
 export const listenerCount = (emitter: EventEmitter, eventName: string): int =>
   emitter.listenerCount(eventName);
 
-export const once = async (
+export const once = (
   emitter: EventEmitter,
   eventName: string
-): Promise<unknown[]> =>
-  await new Promise<unknown[]>((resolve) => {
+): Promise<unknown[]> => {
+  if (emitter === undefined || emitter === null) {
+    throw new Error("EventEmitter.once requires an emitter");
+  }
+
+  if (eventName === undefined || eventName === null || eventName.length === 0) {
+    throw new Error("EventEmitter.once requires a non-empty event name");
+  }
+
+  return new Promise<unknown[]>((resolve) => {
     emitter.once(eventName, (...args: unknown[]) => {
       resolve(args);
     });
   });
+};
 
 export const setMaxListeners = (
   value: int,

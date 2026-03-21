@@ -15,16 +15,8 @@ Port `nodejs-clr` into a native Tsonic source package that becomes the future `@
 Implemented and validated natively in `versions/10/src`:
 
 - `path`
-
-Drafted but blocked on current Tsonic source-package exact-numeric emission:
-
 - `events`
 - `process`
-
-Deferred from `process` until the runtime model is sound:
-
-- `env`
-- signal/process-control APIs beyond `exit`
 
 ## Coverage rule
 
@@ -35,15 +27,19 @@ Every migration slice must include:
 - runtime smoke coverage
 - a gap report against `../nodejs-clr/tests/nodejs.Tests`
 
+For an implemented module to count as migrated, the gap report must show:
+
+- exact selftest file parity
+- exact fact-count parity
+
 ## Next batches
 
-1. finish `process`
-2. `timers`
-3. `console`
-4. `util`
-5. `assert`
-6. `fs`
-7. `stream`
-8. `http`
-9. `net`
-10. remaining module matrix
+1. `timers`
+2. `console`
+3. `util`
+4. `assert`
+5. `fs`
+6. `stream`
+7. `http`
+8. `net`
+9. remaining module matrix

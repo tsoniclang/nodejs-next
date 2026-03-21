@@ -133,6 +133,6 @@ OUTPUT="$(
     | tail -n 1
 )"
 
-[ "$OUTPUT" = "path-ok" ]
+[ "$OUTPUT" = "path-ok;events-ok;process-ok" ]
 
 echo "nodejs-next selftest passed"

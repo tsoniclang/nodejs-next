@@ -9,17 +9,27 @@ import {
   matchesGlob,
   normalize,
   parse,
+  posix,
   relative,
   resolve,
   sep,
   toNamespacedPath,
+  win32,
 } from "./path-module.ts";
-import { process, ProcessModule, ProcessVersions } from "./process-module.ts";
+import { EventEmitter, events } from "./events-module.ts";
+import {
+  process,
+  ProcessEnv,
+  ProcessModule,
+  ProcessVersions,
+} from "./process-module.ts";
 
 export {
   basename,
   delimiter,
   dirname,
+  events,
+  EventEmitter,
   extname,
   format,
   isAbsolute,
@@ -27,13 +37,16 @@ export {
   matchesGlob,
   normalize,
   parse,
+  posix,
   relative,
   resolve,
   sep,
   toNamespacedPath,
+  win32,
   process,
+  ProcessEnv,
   ProcessModule,
   ProcessVersions,
 };
 
-export type { ParsedPath } from "./path-module.ts";
+export type { ParsedPath, PathModuleNamespace } from "./path-module.ts";

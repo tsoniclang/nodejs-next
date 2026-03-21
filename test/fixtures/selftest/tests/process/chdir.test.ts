@@ -14,6 +14,18 @@ export class ProcessChdirTests {
     try {
       process.chdir(target);
       Assert.Equal(target, process.cwd());
+    } finally {
+      Directory.SetCurrentDirectory(original);
+      deleteIfExists(target);
+    }
+  }
+
+  public chdir_updates_dotnet_current_directory(): void {
+    const original = Directory.GetCurrentDirectory();
+    const target = createTempDir();
+
+    try {
+      process.chdir(target);
       Assert.Equal(target, Directory.GetCurrentDirectory());
     } finally {
       Directory.SetCurrentDirectory(original);
@@ -37,9 +49,18 @@ export class ProcessChdirTests {
     }
   }
 
-  public chdir_rejects_invalid_inputs(): void {
+  public chdir_rejects_missing_directory(): void {
+    assertThrows(() => process.chdir(undefined as never));
+  }
+
+  public chdir_rejects_empty_directory(): void {
     assertThrows(() => process.chdir(""));
-    assertThrows(() => process.chdir(Path.Combine(Path.GetTempPath(), "does-not-exist-nodejs-next")));
+  }
+
+  public chdir_rejects_non_existent_directory(): void {
+    assertThrows(() =>
+      process.chdir(Path.Combine(Path.GetTempPath(), "does-not-exist-nodejs-next"))
+    );
   }
 }
 
@@ -47,8 +68,17 @@ A.on(ProcessChdirTests)
   .method((t) => t.chdir_changes_current_directory)
   .add(FactAttribute);
 A.on(ProcessChdirTests)
+  .method((t) => t.chdir_updates_dotnet_current_directory)
+  .add(FactAttribute);
+A.on(ProcessChdirTests)
   .method((t) => t.chdir_supports_relative_paths)
   .add(FactAttribute);
 A.on(ProcessChdirTests)
-  .method((t) => t.chdir_rejects_invalid_inputs)
+  .method((t) => t.chdir_rejects_missing_directory)
+  .add(FactAttribute);
+A.on(ProcessChdirTests)
+  .method((t) => t.chdir_rejects_empty_directory)
+  .add(FactAttribute);
+A.on(ProcessChdirTests)
+  .method((t) => t.chdir_rejects_non_existent_directory)
   .add(FactAttribute);

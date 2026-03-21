@@ -1,5 +1,6 @@
 import type { int } from "@tsonic/core/types.js";
 import { Environment } from "@tsonic/dotnet/System.js";
+import { Process } from "@tsonic/dotnet/System.Diagnostics.js";
 import { Directory, File, Path } from "@tsonic/dotnet/System.IO.js";
 import {
   OSPlatform,
@@ -48,6 +49,18 @@ const toInt32 = (value: number): int | undefined => {
   return undefined;
 };
 
+const isWindows = (): boolean =>
+  RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
+const stringsEqual = (left: string, right: string): boolean =>
+  isWindows()
+    ? left.toLowerCase() === right.toLowerCase()
+    : left === right;
+
+const unsetEnvironmentVariable = (key: string): void => {
+  Environment.SetEnvironmentVariable(key, null as unknown as string);
+};
+
 let currentExitCode: int | undefined = undefined;
 
 let currentArgv = Environment.GetCommandLineArgs();
@@ -72,6 +85,87 @@ export class ProcessVersions {
 
 const currentVersions = new ProcessVersions();
 
+export class ProcessEnv {
+  private readonly values: Record<string, string | undefined> = {};
+
+  public constructor() {
+    const variables = Environment.GetEnvironmentVariables();
+    const iterator = variables.GetEnumerator();
+    while (iterator.MoveNext()) {
+      const entry = iterator.Entry;
+      const rawKey = entry.Key;
+      if (rawKey === undefined || rawKey === null) {
+        continue;
+      }
+
+      const key = String(rawKey);
+      const rawValue = entry.Value;
+      this.values[key] =
+        rawValue === undefined || rawValue === null ? undefined : String(rawValue);
+    }
+  }
+
+  public containsKey(key: string): boolean {
+    return this.resolveKey(key) !== undefined;
+  }
+
+  public get(key: string): string | undefined {
+    const resolvedKey = this.resolveKey(key);
+    return resolvedKey === undefined ? undefined : this.values[resolvedKey];
+  }
+
+  public set(key: string, value: string | undefined): void {
+    const resolvedKey = this.resolveKey(key) ?? key;
+    if (value === undefined) {
+      if (this.hasOwnKey(resolvedKey)) {
+        delete this.values[resolvedKey];
+      }
+      unsetEnvironmentVariable(resolvedKey);
+      return;
+    }
+
+    this.values[resolvedKey] = value;
+    Environment.SetEnvironmentVariable(resolvedKey, value);
+  }
+
+  public remove(key: string): boolean {
+    const resolvedKey = this.resolveKey(key);
+    if (resolvedKey === undefined) {
+      return false;
+    }
+
+    delete this.values[resolvedKey];
+    unsetEnvironmentVariable(resolvedKey);
+    return true;
+  }
+
+  private resolveKey(key: string): string | undefined {
+    if (this.hasOwnKey(key)) {
+      return key;
+    }
+
+    for (const existingKey in this.values) {
+      if (stringsEqual(existingKey, key)) {
+        return existingKey;
+      }
+    }
+
+    return undefined;
+  }
+
+  private hasOwnKey(key: string): boolean {
+    for (const existingKey in this.values) {
+      if (existingKey === key) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+}
+
+const currentEnv = new ProcessEnv();
+
 export const cwd = (): string => Directory.GetCurrentDirectory();
 
 export const chdir = (directory: string): void => {
@@ -89,6 +183,69 @@ export const chdir = (directory: string): void => {
 export const exit = (code?: int): void => {
   const resolved = code ?? currentExitCode ?? (0 as int);
   Environment.Exit(resolved);
+};
+
+const normalizeSignal = (signal?: int | string): string => {
+  if (signal === undefined) {
+    return "SIGTERM";
+  }
+
+  if (typeof signal === "string") {
+    return signal.toUpperCase();
+  }
+
+  if (signal === (0 as int)) {
+    return "0";
+  }
+  if (signal === (1 as int)) {
+    return "SIGHUP";
+  }
+  if (signal === (2 as int)) {
+    return "SIGINT";
+  }
+  if (signal === (9 as int)) {
+    return "SIGKILL";
+  }
+  if (signal === (15 as int)) {
+    return "SIGTERM";
+  }
+
+  return "SIGTERM";
+};
+
+export const kill = (targetPid: int, signal?: int | string): boolean => {
+  try {
+    const target = Process.GetProcessById(targetPid);
+    const normalizedSignal = normalizeSignal(signal);
+
+    switch (normalizedSignal) {
+      case "0":
+      case "SIGNULL":
+        return !target.HasExited;
+      case "SIGINT":
+      case "SIGHUP":
+        if (target.CloseMainWindow()) {
+          return true;
+        }
+        target.Kill();
+        return true;
+      case "SIGKILL":
+      case "SIGTERM":
+      default:
+        target.Kill();
+        return true;
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === "ArgumentException") {
+      throw new Error(`kill ESRCH: No such process ${String(targetPid)}`);
+    }
+
+    if (error instanceof Error) {
+      throw new Error(`kill failed: ${error.message}`);
+    }
+
+    throw new Error(`kill failed: ${String(error)}`);
+  }
 };
 
 const getParentProcessId = (): int => {
@@ -112,6 +269,10 @@ const getParentProcessId = (): int => {
 };
 
 export class ProcessModule {
+  public get env(): ProcessEnv {
+    return currentEnv;
+  }
+
   public get argv(): string[] {
     return currentArgv;
   }
@@ -174,6 +335,10 @@ export class ProcessModule {
 
   public exit(code?: int): void {
     exit(code);
+  }
+
+  public kill(pid: int, signal?: int | string): boolean {
+    return kill(pid, signal);
   }
 }
 

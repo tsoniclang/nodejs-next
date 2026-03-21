@@ -1,26 +1,30 @@
 import { attributes as A } from "@tsonic/core/lang.js";
 import { Assert, FactAttribute } from "xunit-types/Xunit.js";
 import { Environment } from "@tsonic/dotnet/System.js";
+import { Process } from "@tsonic/dotnet/System.Diagnostics.js";
 
 import { process } from "@tsonic/nodejs/process.js";
 
 export class ProcessPidTests {
-  public pid_matches_environment_process_id(): void {
+  public pid_returns_a_valid_process_id(): void {
     Assert.True(process.pid > 0);
+  }
+
+  public pid_matches_environment_process_id(): void {
     Assert.Equal(Environment.ProcessId, process.pid);
   }
 
-  public ppid_is_non_negative_and_differs_when_available(): void {
-    Assert.True(process.ppid >= 0);
-    if (process.ppid > 0) {
-      Assert.True(process.ppid !== process.pid);
-    }
+  public pid_matches_current_process_id(): void {
+    Assert.Equal(Process.GetCurrentProcess().Id, process.pid);
   }
 }
 
 A.on(ProcessPidTests)
+  .method((t) => t.pid_returns_a_valid_process_id)
+  .add(FactAttribute);
+A.on(ProcessPidTests)
   .method((t) => t.pid_matches_environment_process_id)
   .add(FactAttribute);
 A.on(ProcessPidTests)
-  .method((t) => t.ppid_is_non_negative_and_differs_when_available)
+  .method((t) => t.pid_matches_current_process_id)
   .add(FactAttribute);

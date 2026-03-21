@@ -8,6 +8,20 @@ import {
 import { process } from "@tsonic/nodejs/process.js";
 
 export class ProcessPlatformTests {
+  public platform_returns_a_known_platform_string(): void {
+    Assert.True(
+      [
+        "win32",
+        "linux",
+        "darwin",
+        "freebsd",
+        "openbsd",
+        "sunos",
+        "aix",
+      ].includes(process.platform),
+    );
+  }
+
   public platform_matches_runtime_platform(): void {
     if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
       Assert.Equal("win32", process.platform);
@@ -28,6 +42,9 @@ export class ProcessPlatformTests {
   }
 }
 
+A.on(ProcessPlatformTests)
+  .method((t) => t.platform_returns_a_known_platform_string)
+  .add(FactAttribute);
 A.on(ProcessPlatformTests)
   .method((t) => t.platform_matches_runtime_platform)
   .add(FactAttribute);
