@@ -6,11 +6,15 @@
   ],
   "source": {
     "exports": {
+      "./assert.js": "./src/assert-module.ts",
+      "./console.js": "./src/console-module.ts",
       ".": "./src/index.ts",
       "./events.js": "./src/events-module.ts",
       "./index.js": "./src/index.ts",
       "./path.js": "./src/path-module.ts",
-      "./process.js": "./src/process-module.ts"
+      "./process.js": "./src/process-module.ts",
+      "./timers.js": "./src/timers-module.ts",
+      "./util.js": "./src/util-module.ts"
     }
   }
 }
