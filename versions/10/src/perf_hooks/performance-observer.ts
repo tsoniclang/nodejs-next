@@ -77,7 +77,7 @@ const observers: PerformanceObserver[] = [];
  */
 export class PerformanceObserver {
   private readonly callback: PerformanceObserverCallback;
-  private entryTypes: ReadonlySet<string> = new Set();
+  private entryTypes: Set<string> = new Set();
   private observing = false;
 
   public constructor(callback: PerformanceObserverCallback) {

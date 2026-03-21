@@ -1,8 +1,9 @@
 import { Assert } from "xunit-types/Xunit.js";
 
+import { Buffer } from "@tsonic/nodejs/buffer.js";
 import { StringDecoder } from "@tsonic/nodejs/string_decoder.js";
 
-const utf8Bytes = (str: string): Uint8Array => new TextEncoder().encode(str);
+const utf8Bytes = (str: string): Uint8Array => Buffer.from(str, "utf8").buffer;
 
 /**
  * Baseline: nodejs-clr/tests/nodejs.Tests/string_decoder/string_decoder.tests.cs

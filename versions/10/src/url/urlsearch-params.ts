@@ -4,6 +4,11 @@
  * Baseline: nodejs-clr/src/nodejs/url/URLSearchParams.cs
  */
 
+import {
+  decodeURIComponent as jsDecodeURIComponent,
+  encodeURIComponent as jsEncodeURIComponent,
+} from "@tsonic/js/index.js";
+
 export class URLSearchParams {
   private readonly params: Array<[string, string]> = [];
 
@@ -104,9 +109,9 @@ export class URLSearchParams {
     const parts: string[] = [];
     for (let i = 0; i < this.params.length; i += 1) {
       parts.push(
-        encodeURIComponent(this.params[i]![0]) +
+        jsEncodeURIComponent(this.params[i]![0]) +
           "=" +
-          encodeURIComponent(this.params[i]![1])
+          jsEncodeURIComponent(this.params[i]![1])
       );
     }
     return parts.join("&");
@@ -125,11 +130,11 @@ export class URLSearchParams {
       const pair = pairs[i]!;
       const eqIndex = pair.indexOf("=");
       if (eqIndex >= 0) {
-        const key = decodeURIComponent(pair.slice(0, eqIndex));
-        const value = decodeURIComponent(pair.slice(eqIndex + 1));
+        const key = jsDecodeURIComponent(pair.slice(0, eqIndex));
+        const value = jsDecodeURIComponent(pair.slice(eqIndex + 1));
         this.params.push([key, value]);
       } else {
-        this.params.push([decodeURIComponent(pair), ""]);
+        this.params.push([jsDecodeURIComponent(pair), ""]);
       }
     }
   }

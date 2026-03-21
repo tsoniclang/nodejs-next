@@ -11,6 +11,7 @@
 
 import type { BrotliOptions } from "./brotli-options.ts";
 import type { ZlibOptions } from "./zlib-options.ts";
+import { stringToBytes } from "../buffer/buffer-encoding.ts";
 
 // ---------------------------------------------------------------------------
 // CRC-32 table (computed once, standard IEEE polynomial 0xEDB88320)
@@ -64,7 +65,7 @@ export const crc32String = (data: string, value: number = 0): number => {
     throw new Error("data must not be null");
   }
 
-  const bytes = new TextEncoder().encode(data);
+  const bytes = stringToBytes(data, "utf8");
   return crc32(bytes, value);
 };
 

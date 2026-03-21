@@ -294,7 +294,8 @@ export class BufferTests {
     buf.writeFloatLE(3.140000104904175, 0);
     // Float32 has limited precision
     const val = buf.readFloatLE(0);
-    Assert.True(Math.abs(val - 3.14) < 0.001);
+    const delta = val - 3.14;
+    Assert.True((delta < 0 ? -delta : delta) < 0.001);
   }
 
   public readDoubleLE_ShouldReadDouble(): void {

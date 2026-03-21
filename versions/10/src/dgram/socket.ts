@@ -8,6 +8,7 @@
  */
 
 import { EventEmitter } from "../events-module.ts";
+import { stringToBytes } from "../buffer/buffer-encoding.ts";
 import { RemoteInfo } from "./remote-info.ts";
 import { SocketOptions, BindOptions } from "./socket-options.ts";
 
@@ -271,7 +272,29 @@ export class DgramSocket extends EventEmitter {
     length: number,
     callback: (error: Error | null, bytes: number) => void,
   ): void;
-  send(msg: Uint8Array | string, ...args: unknown[]): void {
+  send(
+    msg: Uint8Array | string,
+    arg1?:
+      | number
+      | ((error: Error | null, bytes: number) => void),
+    arg2?:
+      | number
+      | string
+      | ((error: Error | null, bytes: number) => void),
+    arg3?:
+      | number
+      | string
+      | ((error: Error | null, bytes: number) => void),
+    arg4?: string | ((error: Error | null, bytes: number) => void),
+    arg5?: (error: Error | null, bytes: number) => void,
+  ): void {
+    const args: unknown[] = [];
+    if (arg1 !== undefined) args.push(arg1);
+    if (arg2 !== undefined) args.push(arg2);
+    if (arg3 !== undefined) args.push(arg3);
+    if (arg4 !== undefined) args.push(arg4);
+    if (arg5 !== undefined) args.push(arg5);
+
     // Parse the complex overloaded signature
     const parsed = parseSendArgs(msg, args);
 
@@ -539,11 +562,17 @@ type ParsedSendArgs = {
   readonly callback: ((error: Error | null, bytes: number) => void) | undefined;
 };
 
-const textEncoder = new TextEncoder();
+const copyRange = (data: Uint8Array, start: number, end: number): Uint8Array => {
+  const result = new Uint8Array(end - start);
+  for (let index = 0; index < result.length; index += 1) {
+    result[index] = data[start + index]!;
+  }
+  return result;
+};
 
 const toBytes = (msg: Uint8Array | string): Uint8Array => {
   if (typeof msg === "string") {
-    return textEncoder.encode(msg);
+    return stringToBytes(msg, "utf8");
   }
   return msg;
 };
@@ -588,7 +617,7 @@ const parseSendArgs = (
       throw new RangeError("Length must be within buffer bounds");
     }
 
-    const slice = msg.slice(offset, offset + length);
+    const slice = copyRange(msg, offset, offset + length);
     const remaining = args.slice(2);
 
     // send(msg, offset, length)

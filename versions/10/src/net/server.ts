@@ -49,13 +49,17 @@ export class Server extends EventEmitter {
       // Server(connectionListener)
       this._allowHalfOpen = false;
       this._pauseOnConnect = false;
-      this.on("connection", optionsOrListener);
+      this.on("connection", (...args: unknown[]) => {
+        optionsOrListener(args[0] as Socket);
+      });
     } else {
       // Server(options?, connectionListener?)
       this._allowHalfOpen = optionsOrListener?.allowHalfOpen ?? false;
       this._pauseOnConnect = optionsOrListener?.pauseOnConnect ?? false;
       if (connectionListener !== undefined) {
-        this.on("connection", connectionListener);
+        this.on("connection", (...args: unknown[]) => {
+          connectionListener(args[0] as Socket);
+        });
       }
     }
   }

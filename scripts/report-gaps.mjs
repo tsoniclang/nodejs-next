@@ -4,16 +4,14 @@ import { join, resolve } from "node:path";
 const repoRoot = resolve(new URL("..", import.meta.url).pathname);
 const clrTestsRoot = join(repoRoot, "..", "nodejs-clr", "tests", "nodejs.Tests");
 
-const implementedModules = new Set([
-  "assert",
-  "console",
-  "events",
-  "path",
-  "process",
-  "timers",
-  "util",
-]);
 const selftestRoot = join(repoRoot, "test", "fixtures", "selftest", "tests");
+
+const implementedModules = new Set(
+  readdirSync(selftestRoot)
+    .map((name) => join(selftestRoot, name))
+    .filter((entryPath) => statSync(entryPath).isDirectory())
+    .map((entryPath) => entryPath.slice(entryPath.lastIndexOf("/") + 1))
+);
 
 const normalizeClrTestStem = (name) =>
   name
@@ -61,6 +59,7 @@ const moduleDirs = readdirSync(clrTestsRoot)
     name: path.slice(path.lastIndexOf("/") + 1),
     path,
   }))
+  .filter(({ name }) => name !== "TestResults")
   .sort((a, b) => a.name.localeCompare(b.name));
 
 let implementedCount = 0;

@@ -8,28 +8,43 @@ import type { int } from "@tsonic/core/types.js";
 /**
  * Represents a cryptographic key.
  */
-export abstract class KeyObject {
+export class KeyObject {
+  public readonly ["export"]: (options?: unknown) => unknown;
+
+  protected constructor() {
+    this["export"] = (options?: unknown): unknown => this.exportCore(options);
+  }
+
   /**
    * The type of the key: 'secret', 'public', or 'private'.
    */
-  public abstract get type(): string;
+  public get type(): string {
+    throw new Error("KeyObject.type must be implemented by a subclass");
+  }
 
   /**
    * For asymmetric keys, this property returns the type of the key (e.g., 'rsa', 'ec', 'ed25519').
    * For secret keys, this property is undefined.
    */
-  public abstract get asymmetricKeyType(): string | null;
+  public get asymmetricKeyType(): string | null {
+    throw new Error(
+      "KeyObject.asymmetricKeyType must be implemented by a subclass",
+    );
+  }
 
   /**
    * For secret keys, this property returns the size of the key in bytes.
    * For asymmetric keys, this property is undefined.
    */
-  public abstract get symmetricKeySize(): int | null;
+  public get symmetricKeySize(): int | null {
+    throw new Error(
+      "KeyObject.symmetricKeySize must be implemented by a subclass",
+    );
+  }
 
-  /**
-   * Exports the key in the specified format.
-   */
-  public abstract export(options?: unknown): unknown;
+  protected exportCore(_options?: unknown): unknown {
+    throw new Error("KeyObject.exportCore must be implemented by a subclass");
+  }
 }
 
 /**
@@ -55,7 +70,7 @@ export class SecretKeyObject extends KeyObject {
     return this._keyData.length as int;
   }
 
-  public export(_options?: unknown): Uint8Array {
+  protected exportCore(_options?: unknown): Uint8Array {
     // TODO: actual export logic
     return this._keyData;
   }
@@ -86,7 +101,7 @@ export class PublicKeyObject extends KeyObject {
     return null;
   }
 
-  public export(_options?: unknown): unknown {
+  protected exportCore(_options?: unknown): unknown {
     // TODO: actual PEM/DER export
     return this._keyData;
   }
@@ -122,7 +137,7 @@ export class PrivateKeyObject extends KeyObject {
     return null;
   }
 
-  public export(_options?: unknown): unknown {
+  protected exportCore(_options?: unknown): unknown {
     // TODO: actual PEM/DER export
     return this._keyData;
   }

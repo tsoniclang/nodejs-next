@@ -3,7 +3,7 @@
  *
  * Baseline: nodejs-clr/src/nodejs/os/homedir.cs
  */
-import { Environment, SpecialFolder } from "@tsonic/dotnet/System.js";
+import { Environment, Environment_SpecialFolder } from "@tsonic/dotnet/System.js";
 
 export const homedir = (): string =>
-  Environment.GetFolderPath(SpecialFolder.UserProfile);
+  Environment.GetFolderPath(Environment_SpecialFolder.UserProfile);

@@ -12,24 +12,44 @@ The migration standard is:
 - .NET remains only the host substrate where needed
 - every migrated module must have checked-in coverage and a traceable test inventory
 
-## Current native slice
+## Current state
 
-The first validated native slice in this repo covers:
+This branch contains a broad mechanical native port of the Node.js module
+matrix. The source and selftest trees now cover:
 
 - `assert`
+- `buffer`
+- `child_process`
 - `console`
-- `path`
+- `crypto`
+- `dgram`
+- `dns`
 - `events`
+- `fs`
+- `http`
+- `net`
+- `os`
+- `path`
+- `perf_hooks`
 - `process`
+- `querystring`
+- `readline`
+- `stream`
+- `string_decoder`
 - `timers`
+- `tls`
+- `url`
 - `util`
+- `zlib`
 
-For that slice, `npm run report:gaps` now proves:
+This repo is not considered complete until all of the above:
 
-- exact selftest file coverage parity against `nodejs-clr`
-- exact fact-count parity for the ported `tsonic test` suites
+- compile under Tsonic
+- run through the selftest matrix
+- maintain traceable parity against `nodejs-clr`
 
-The next work is moving through the remaining Node.js module matrix after the current `assert` / `console` / `events` / `path` / `process` / `timers` / `util` slice.
+Use `npm run report:gaps` to compare the checked-in selftest inventory against
+the `nodejs-clr` baseline.
 
 ## Commands
 

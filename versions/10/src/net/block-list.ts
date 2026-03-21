@@ -97,7 +97,7 @@ const isInSubnet = (
     return false;
   }
 
-  const fullBytes = Math.floor(prefix / 8);
+  const fullBytes = JSMath.floor(prefix / 8);
   const remainingBits = prefix % 8;
 
   for (let i = 0; i < fullBytes; i = i + 1) {
@@ -198,3 +198,4 @@ export class BlockList {
     return rules;
   }
 }
+import { Math as JSMath } from "@tsonic/js/index.js";

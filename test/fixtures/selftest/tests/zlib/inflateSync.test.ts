@@ -3,7 +3,7 @@ import { Assert, FactAttribute } from "xunit-types/Xunit.js";
 
 import { deflateSync, inflateSync } from "@tsonic/nodejs/zlib.js";
 
-import { assertThrows, utf8Bytes } from "./helpers.ts";
+import { assertThrows, utf8Bytes, utf8String } from "./helpers.ts";
 
 /**
  * Baseline: nodejs-clr/tests/nodejs.Tests/zlib/inflateSync.tests.cs
@@ -26,7 +26,7 @@ export class Zlib_inflateSyncTests {
 
     const compressed = deflateSync(original);
     const decompressed = inflateSync(compressed);
-    const resultText = new TextDecoder().decode(decompressed);
+    const resultText = utf8String(decompressed);
 
     Assert.Equal(originalText, resultText);
   }

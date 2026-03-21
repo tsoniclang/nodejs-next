@@ -124,7 +124,9 @@ export class Duplex extends Readable {
    * @param error - Optional error to emit.
    */
   public override destroy(error?: Error): void {
-    this._writeBuffer.length = 0;
+    while (this._writeBuffer.length > 0) {
+      this._writeBuffer.pop();
+    }
     super.destroy(error);
   }
 

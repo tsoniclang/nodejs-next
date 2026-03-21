@@ -406,7 +406,7 @@ export const createDiffieHellman = (
     }
     const gen =
       typeof generatorOrEncoding === "number" ? generatorOrEncoding : 2;
-    return new DiffieHellman(primeOrLength, gen);
+    return new DiffieHellman(primeOrLength, new Uint8Array([gen]));
   }
 
   // String prime with encoding

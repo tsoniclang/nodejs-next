@@ -105,21 +105,21 @@ export const connect = (
   optionsOrCallback?: ConnectionOptions | (() => void) | null,
   secureConnectListener?: (() => void) | null
 ): TLSSocket => {
+  let options: ConnectionOptions;
   // Normalise overloads
-  const options: ConnectionOptions =
-    typeof optionsOrPort === "number"
-      ? (() => {
-          const opts =
-            optionsOrCallback instanceof ConnectionOptions
-              ? optionsOrCallback
-              : new ConnectionOptions();
-          opts.port = optionsOrPort;
-          if (typeof hostOrListener === "string") {
-            opts.host = hostOrListener;
-          }
-          return opts;
-        })()
-      : optionsOrPort;
+  if (typeof optionsOrPort === "number") {
+    const opts =
+      optionsOrCallback instanceof ConnectionOptions
+        ? optionsOrCallback
+        : new ConnectionOptions();
+    opts.port = optionsOrPort;
+    if (typeof hostOrListener === "string") {
+      opts.host = hostOrListener;
+    }
+    options = opts;
+  } else {
+    options = optionsOrPort;
+  }
 
   const listener: (() => void) | null =
     typeof hostOrListener === "function"
@@ -128,18 +128,15 @@ export const connect = (
         ? optionsOrCallback
         : secureConnectListener ?? null;
 
-  const secureContext = createSecureContext(
-    (() => {
-      const ctxOpts = new SecureContextOptions();
-      ctxOpts.ca = options.ca;
-      ctxOpts.cert = options.cert;
-      ctxOpts.key = options.key;
-      ctxOpts.passphrase = options.passphrase;
-      ctxOpts.minVersion =
-        options.rejectUnauthorized !== false ? "TLSv1.2" : null;
-      return ctxOpts;
-    })()
-  );
+  const ctxOpts = new SecureContextOptions();
+  ctxOpts.ca = options.ca;
+  ctxOpts.cert = options.cert;
+  ctxOpts.key = options.key;
+  ctxOpts.passphrase = options.passphrase;
+  ctxOpts.minVersion =
+    options.rejectUnauthorized !== false ? "TLSv1.2" : null;
+
+  const secureContext = createSecureContext(ctxOpts);
 
   const socketOpts = new TLSSocketOptions();
   socketOpts.isServer = false;

@@ -107,7 +107,8 @@ export const validateHeaderName = (name: string): void => {
     throw new Error("Header name must be a valid string");
   }
 
-  for (const c of name) {
+  for (let index = 0; index < name.length; index += 1) {
+    const c = name.charAt(index);
     if (!isValidHeaderNameChar(c)) {
       throw new Error(`Invalid character in header name: '${c}'`);
     }
@@ -121,7 +122,8 @@ export const validateHeaderName = (name: string): void => {
  * @param value - Header value to validate.
  */
 export const validateHeaderValue = (name: string, value: string): void => {
-  for (const c of value) {
+  for (let index = 0; index < value.length; index += 1) {
+    const c = value.charAt(index);
     const code = c.charCodeAt(0);
     if ((code < 0x20 && code !== 0x09) || code === 0x7f) {
       throw new Error(`Invalid character in header '${name}' value`);

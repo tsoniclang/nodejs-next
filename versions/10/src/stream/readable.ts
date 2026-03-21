@@ -197,7 +197,9 @@ export class Readable extends Stream {
     }
 
     this._destroyed = true;
-    this._buffer.length = 0;
+    while (this._buffer.length > 0) {
+      this._buffer.pop();
+    }
 
     super.destroy(error);
   }

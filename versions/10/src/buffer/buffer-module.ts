@@ -6,6 +6,19 @@
  */
 
 import { Buffer } from "./buffer.ts";
+import {
+  base64ToBytes,
+  bytesToBase64,
+  bytesToString,
+  stringToBytes,
+} from "./buffer-encoding.ts";
+
+class NodeTypeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TypeError";
+  }
+}
 
 /**
  * Constants for the buffer module.
@@ -53,10 +66,10 @@ export const SlowBuffer = (size: number): Buffer => {
  */
 export const atob = (data: string): string => {
   if (data === null || data === undefined) {
-    throw new TypeError("The argument must be a string");
+    throw new NodeTypeError("The argument must be a string");
   }
-  // Use globalThis.atob which is available in modern JS runtimes
-  return globalThis.atob(data);
+  const decoded = base64ToBytes(data);
+  return bytesToString(decoded, "latin1", 0, decoded.length);
 };
 
 /**
@@ -64,9 +77,9 @@ export const atob = (data: string): string => {
  */
 export const btoa = (data: string): string => {
   if (data === null || data === undefined) {
-    throw new TypeError("The argument must be a string");
+    throw new NodeTypeError("The argument must be a string");
   }
-  return globalThis.btoa(data);
+  return bytesToBase64(stringToBytes(data, "latin1"));
 };
 
 /**
@@ -74,7 +87,7 @@ export const btoa = (data: string): string => {
  */
 export const isAscii = (value: Buffer | Uint8Array): boolean => {
   if (value === null || value === undefined) {
-    throw new TypeError("The argument must be a Buffer or Uint8Array");
+    throw new NodeTypeError("The argument must be a Buffer or Uint8Array");
   }
 
   const data = value instanceof Buffer ? value.buffer : value;
@@ -89,7 +102,7 @@ export const isAscii = (value: Buffer | Uint8Array): boolean => {
  */
 export const isUtf8 = (value: Buffer | Uint8Array): boolean => {
   if (value === null || value === undefined) {
-    throw new TypeError("The argument must be a Buffer or Uint8Array");
+    throw new NodeTypeError("The argument must be a Buffer or Uint8Array");
   }
 
   const data = value instanceof Buffer ? value.buffer : value;
@@ -149,7 +162,7 @@ export const transcode = (
   toEncoding: string,
 ): Buffer => {
   if (source === null || source === undefined) {
-    throw new TypeError("The source argument must be a Buffer");
+    throw new NodeTypeError("The source argument must be a Buffer");
   }
 
   // Decode from source encoding, re-encode to target encoding

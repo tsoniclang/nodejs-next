@@ -8,114 +8,151 @@
  * preserves the same public surface shape.
  */
 
+import {
+  Uri,
+  UriBuilder,
+  UriFormatException,
+} from "@tsonic/dotnet/System.js";
 import { URLSearchParams } from "./urlsearch-params.ts";
 
-const isDefaultPort = (scheme: string, port: string): boolean => {
-  if (scheme === "http:" && port === "80") return true;
-  if (scheme === "https:" && port === "443") return true;
-  if (scheme === "ftp:" && port === "21") return true;
-  return false;
+const trimLeading = (value: string, prefix: string): string => {
+  return value.startsWith(prefix) ? value.slice(prefix.length) : value;
+};
+
+const splitUserInfo = (userInfo: string): { username: string; password: string } => {
+  if (userInfo.length === 0) {
+    return { username: "", password: "" };
+  }
+  const separatorIndex = userInfo.indexOf(":");
+  if (separatorIndex < 0) {
+    return { username: userInfo, password: "" };
+  }
+  return {
+    username: userInfo.slice(0, separatorIndex),
+    password: userInfo.slice(separatorIndex + 1),
+  };
+};
+
+const buildUriBuilder = (input: string, base?: string): UriBuilder => {
+  if (base !== undefined) {
+    const baseUri = new Uri(base);
+    return new UriBuilder(new Uri(baseUri, input));
+  }
+
+  return new UriBuilder(input);
 };
 
 export class URL {
-  private url: globalThis.URL;
+  private builder: UriBuilder;
   private cachedSearchParams: URLSearchParams | null = null;
 
   constructor(input: string, base?: string) {
-    this.url = base !== undefined ? new globalThis.URL(input, base) : new globalThis.URL(input);
+    this.builder = buildUriBuilder(input, base);
+  }
+
+  private get uri(): Uri {
+    return this.builder.Uri;
   }
 
   get href(): string {
-    return this.url.href;
+    return this.uri.AbsoluteUri;
   }
 
   set href(value: string) {
-    this.url = new globalThis.URL(value);
+    this.builder = buildUriBuilder(value);
     this.cachedSearchParams = null;
   }
 
   get protocol(): string {
-    return this.url.protocol;
+    return `${this.uri.Scheme}:`;
   }
 
   set protocol(value: string) {
-    this.url.protocol = value;
+    this.builder.Scheme = trimLeading(value, ":");
   }
 
   get username(): string {
-    return this.url.username;
+    return splitUserInfo(this.uri.UserInfo).username;
   }
 
   set username(value: string) {
-    this.url.username = value;
+    this.builder.UserName = value;
   }
 
   get password(): string {
-    return this.url.password;
+    return splitUserInfo(this.uri.UserInfo).password;
   }
 
   set password(value: string) {
-    this.url.password = value;
+    this.builder.Password = value;
   }
 
   get host(): string {
-    return this.url.host;
+    return this.uri.IsDefaultPort ? this.uri.Host : `${this.uri.Host}:${String(this.uri.Port)}`;
   }
 
   set host(value: string) {
-    this.url.host = value;
+    const separatorIndex = value.lastIndexOf(":");
+    if (separatorIndex > 0) {
+      this.builder.Host = value.slice(0, separatorIndex);
+      this.builder.Port = parseInt(value.slice(separatorIndex + 1), 10);
+      return;
+    }
+
+    this.builder.Host = value;
+    this.builder.Port = -1;
   }
 
   get hostname(): string {
-    return this.url.hostname;
+    return this.uri.Host;
   }
 
   set hostname(value: string) {
-    this.url.hostname = value;
+    this.builder.Host = value;
   }
 
   get port(): string {
-    return this.url.port;
+    return this.uri.IsDefaultPort ? "" : String(this.uri.Port);
   }
 
   set port(value: string) {
-    this.url.port = value;
+    this.builder.Port = value.length === 0 ? -1 : parseInt(value, 10);
   }
 
   get pathname(): string {
-    return this.url.pathname;
+    return this.uri.AbsolutePath;
   }
 
   set pathname(value: string) {
-    this.url.pathname = value;
+    this.builder.Path = value.startsWith("/") ? value : `/${value}`;
   }
 
   get search(): string {
-    return this.url.search;
+    return this.uri.Query;
   }
 
   set search(value: string) {
-    this.url.search = value;
+    this.builder.Query = trimLeading(value, "?");
     this.cachedSearchParams = null;
   }
 
   get searchParams(): URLSearchParams {
     if (this.cachedSearchParams === null) {
-      this.cachedSearchParams = new URLSearchParams(this.url.search);
+      this.cachedSearchParams = new URLSearchParams(this.search);
     }
     return this.cachedSearchParams;
   }
 
   get hash(): string {
-    return this.url.hash;
+    return this.uri.Fragment;
   }
 
   set hash(value: string) {
-    this.url.hash = value;
+    this.builder.Fragment = trimLeading(value, "#");
   }
 
   get origin(): string {
-    return this.url.origin;
+    return `${this.protocol}//${this.host}`;
   }
 
   toString(): string {
@@ -128,11 +165,7 @@ export class URL {
 
   static canParse(input: string, base?: string): boolean {
     try {
-      if (base !== undefined) {
-        void new globalThis.URL(input, base);
-      } else {
-        void new globalThis.URL(input);
-      }
+      void buildUriBuilder(input, base);
       return true;
     } catch {
       return false;

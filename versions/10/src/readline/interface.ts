@@ -6,6 +6,7 @@
  * Baseline: nodejs-clr/src/nodejs/readline/Interface.cs
  */
 import { EventEmitter } from "../events-module.ts";
+import { Math as JSMath } from "@tsonic/js/index.js";
 import type { Readable } from "../stream/readable.ts";
 import type { Writable } from "../stream/writable.ts";
 import { InterfaceOptions, CursorPosition } from "./interface-options.ts";
@@ -260,7 +261,7 @@ export class Interface extends EventEmitter {
     // Assume 80 column terminal
     const pos = new CursorPosition();
     pos.cols = totalLength % 80;
-    pos.rows = Math.floor(totalLength / 80);
+    pos.rows = JSMath.floor(totalLength / 80);
     return pos;
   }
 
@@ -478,9 +479,11 @@ export class Interface extends EventEmitter {
           filtered.push(h);
         }
       }
-      this._history.length = 0;
-      for (const h of filtered) {
-        this._history.push(h);
+      while (this._history.length > 0) {
+        this._history.pop();
+      }
+      for (let index = 0; index < filtered.length; index += 1) {
+        this._history.push(filtered[index]!);
       }
     }
 

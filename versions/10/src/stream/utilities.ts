@@ -133,9 +133,10 @@ export const finished = (
   const onError = (err: unknown): void => {
     onFinished(err instanceof Error ? err : new Error(String(err)));
   };
-  const onClose = (hadError?: boolean): void => {
+  const onClose = (...args: unknown[]): void => {
+    const hadError = args.length > 0 && args[0] === true;
     onFinished(
-      hadError === true
+      hadError
         ? new Error("Stream closed with error")
         : undefined,
     );

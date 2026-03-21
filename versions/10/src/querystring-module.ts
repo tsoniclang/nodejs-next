@@ -4,6 +4,11 @@
  * Baseline: nodejs-clr/src/nodejs/querystring/querystring.cs
  */
 
+import {
+  decodeURIComponent as jsDecodeURIComponent,
+  encodeURIComponent as jsEncodeURIComponent,
+} from "@tsonic/js/index.js";
+
 /**
  * Performs URL percent-encoding on the given string.
  */
@@ -11,7 +16,7 @@ export const escape = (str: string): string => {
   if (str === null || str === undefined || str.length === 0) {
     return str;
   }
-  return encodeURIComponent(str);
+  return jsEncodeURIComponent(str);
 };
 
 /**
@@ -22,7 +27,7 @@ export const unescape = (str: string): string => {
     return str;
   }
   try {
-    return decodeURIComponent(str);
+    return jsDecodeURIComponent(str);
   } catch {
     return str;
   }
