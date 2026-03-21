@@ -4,6 +4,7 @@ import "./child_process/index.ts";
 import "./console/index.ts";
 import "./crypto/index.ts";
 import "./dgram/index.ts";
+import "./dns/index.ts";
 import "./events/index.ts";
 import "./fs/index.ts";
 import "./http/index.ts";
