@@ -8,6 +8,7 @@
  */
 
 import { EventEmitter } from "../events-module.ts";
+import type { int } from "@tsonic/core/types.js";
 import { stringToBytes } from "../buffer/buffer-encoding.ts";
 import { RemoteInfo } from "./remote-info.ts";
 import { SocketOptions, BindOptions } from "./socket-options.ts";
@@ -562,7 +563,7 @@ type ParsedSendArgs = {
   readonly callback: ((error: Error | null, bytes: number) => void) | undefined;
 };
 
-const copyRange = (data: Uint8Array, start: number, end: number): Uint8Array => {
+const copyRange = (data: Uint8Array, start: int, end: int): Uint8Array => {
   const result = new Uint8Array(end - start);
   for (let index = 0; index < result.length; index += 1) {
     result[index] = data[start + index]!;
@@ -617,7 +618,7 @@ const parseSendArgs = (
       throw new RangeError("Length must be within buffer bounds");
     }
 
-    const slice = copyRange(msg, offset, offset + length);
+    const slice = copyRange(msg, offset as int, (offset + length) as int);
     const remaining = args.slice(2);
 
     // send(msg, offset, length)

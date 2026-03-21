@@ -10,7 +10,7 @@
 
 import { Math as JSMath } from "@tsonic/js/index.js";
 import { BitConverter } from "@tsonic/dotnet/System.js";
-import type { long, ulong } from "@tsonic/core/types.js";
+import type { int, long, ulong } from "@tsonic/core/types.js";
 
 import {
   byteLengthOfString,
@@ -22,7 +22,7 @@ import {
   base64UrlToBase64,
 } from "./buffer-encoding.ts";
 
-const copyRange = (source: Uint8Array, start: number, end: number): Uint8Array => {
+const copyRange = (source: Uint8Array, start: int, end: int): Uint8Array => {
   const safeStart = start < 0 ? 0 : start;
   const safeEnd = end < safeStart ? safeStart : end;
   const result = new Uint8Array(safeEnd - safeStart);
@@ -34,10 +34,10 @@ const copyRange = (source: Uint8Array, start: number, end: number): Uint8Array =
 
 const copyInto = (
   source: Uint8Array,
-  sourceStart: number,
-  sourceEnd: number,
+  sourceStart: int,
+  sourceEnd: int,
   target: Uint8Array,
-  targetStart: number,
+  targetStart: int,
 ): void => {
   for (let index = sourceStart; index < sourceEnd; index += 1) {
     target[targetStart + (index - sourceStart)] = source[index]!;
@@ -96,7 +96,7 @@ export class Buffer {
   private readonly _data: Uint8Array;
 
   /** Gets the length of the buffer in bytes. */
-  get length(): number {
+  get length(): int {
     return this._data.length;
   }
 
@@ -104,7 +104,7 @@ export class Buffer {
    * The size (in bytes) of pre-allocated internal Buffer instances used for pooling.
    * This value may be modified.
    */
-  static poolSize: number = 8192;
+  static poolSize: int = 8192;
 
   private constructor(data: Uint8Array) {
     this._data = data;
@@ -116,14 +116,14 @@ export class Buffer {
    * Returns the byte at `index`.  For performance the caller should
    * bounds-check; out-of-range returns undefined like a typed-array.
    */
-  at(index: number): number | undefined {
+  at(index: int): number | undefined {
     return this._data[index];
   }
 
   /**
    * Sets the byte at `index` (value is truncated to 0-255).
    */
-  set(index: number, value: number): void {
+  set(index: int, value: number): void {
     this._data[index] = value & 0xff;
   }
 
@@ -142,7 +142,7 @@ export class Buffer {
    * If fill is undefined, the Buffer will be zero-filled.
    */
   static alloc(
-    size: number,
+    size: int,
     fill?: number | string | Buffer,
     encoding?: string,
   ): Buffer {
@@ -162,7 +162,7 @@ export class Buffer {
    * Allocates a new Buffer of `size` bytes without zero-filling.
    * In JS-land this still zero-fills because Uint8Array is always zeroed.
    */
-  static allocUnsafe(size: number): Buffer {
+  static allocUnsafe(size: int): Buffer {
     if (size < 0) {
       throw new RangeError("Buffer size must be non-negative");
     }
@@ -172,7 +172,7 @@ export class Buffer {
   /**
    * Allocates a new non-pooled Buffer of `size` bytes.
    */
-  static allocUnsafeSlow(size: number): Buffer {
+  static allocUnsafeSlow(size: int): Buffer {
     if (size < 0) {
       throw new RangeError("Buffer size must be non-negative");
     }
@@ -341,10 +341,10 @@ export class Buffer {
    */
   compare(
     target: Buffer,
-    targetStart?: number,
-    targetEnd?: number,
-    sourceStart?: number,
-    sourceEnd?: number,
+    targetStart?: int,
+    targetEnd?: int,
+    sourceStart?: int,
+    sourceEnd?: int,
   ): number {
     let tStart = targetStart ?? 0;
     let tEnd = targetEnd ?? target.length;
@@ -377,7 +377,7 @@ export class Buffer {
    */
   indexOf(
     value: string | number | Buffer,
-    byteOffset: number = 0,
+    byteOffset: int = 0,
     encoding: string = "utf8",
   ): number {
     let offset = byteOffset;
@@ -407,7 +407,7 @@ export class Buffer {
    */
   lastIndexOf(
     value: string | number | Buffer,
-    byteOffset?: number,
+    byteOffset?: int,
     encoding: string = "utf8",
   ): number {
     let offset = byteOffset ?? this.length - 1;
@@ -441,7 +441,7 @@ export class Buffer {
    */
   includes(
     value: string | number | Buffer,
-    byteOffset: number = 0,
+    byteOffset: int = 0,
     encoding: string = "utf8",
   ): boolean {
     return this.indexOf(value, byteOffset, encoding) !== -1;
@@ -454,8 +454,8 @@ export class Buffer {
    */
   fill(
     value: number | string | Buffer,
-    offset: number = 0,
-    end?: number,
+    offset: int = 0,
+    end?: int,
     encoding: string = "utf8",
   ): Buffer {
     let endIndex = end ?? this.length;
@@ -492,7 +492,7 @@ export class Buffer {
    * Returns a new Buffer referencing the same memory, offset and cropped.
    * In this native implementation a copy is returned for safety.
    */
-  slice(start?: number, end?: number): Buffer {
+  slice(start?: int, end?: int): Buffer {
     let startIndex = start ?? 0;
     let endIndex = end ?? this.length;
 
@@ -511,7 +511,7 @@ export class Buffer {
   /**
    * Returns a view of the buffer (same semantics as slice in this implementation).
    */
-  subarray(start?: number, end?: number): Buffer {
+  subarray(start?: int, end?: int): Buffer {
     return this.slice(start, end);
   }
 
@@ -521,8 +521,8 @@ export class Buffer {
   copy(
     target: Buffer,
     targetStart: number = 0,
-    sourceStart?: number,
-    sourceEnd?: number,
+    sourceStart?: int,
+    sourceEnd?: int,
   ): number {
     let srcStart = sourceStart ?? 0;
     let srcEnd = sourceEnd ?? this.length;
@@ -544,7 +544,7 @@ export class Buffer {
   /**
    * Decodes the buffer to a string.
    */
-  toString(encoding: string = "utf8", start: number = 0, end?: number): string {
+  toString(encoding: string = "utf8", start: int = 0, end?: int): string {
     let endIndex = end ?? this.length;
     if (start < 0) start = 0;
     if (endIndex > this.length) endIndex = this.length;
@@ -569,8 +569,8 @@ export class Buffer {
    */
   write(
     str: string,
-    offset: number = 0,
-    length?: number,
+    offset: int = 0,
+    length?: int,
     encoding: string = "utf8",
   ): number {
     if (offset < 0 || offset >= this.length) return 0;
@@ -663,46 +663,46 @@ export class Buffer {
 
   // ---- instance: read* methods ----
 
-  readUInt8(offset: number = 0): number {
+  readUInt8(offset: int = 0): number {
     return this._data[offset]!;
   }
 
-  readUint8(offset: number = 0): number {
+  readUint8(offset: int = 0): number {
     return this.readUInt8(offset);
   }
 
-  readInt8(offset: number = 0): number {
+  readInt8(offset: int = 0): number {
     const val = this._data[offset]!;
     return val >= 0x80 ? val - 0x100 : val;
   }
 
-  readUInt16LE(offset: number = 0): number {
+  readUInt16LE(offset: int = 0): number {
     return this._data[offset]! | (this._data[offset + 1]! << 8);
   }
 
-  readUint16LE(offset: number = 0): number {
+  readUint16LE(offset: int = 0): number {
     return this.readUInt16LE(offset);
   }
 
-  readInt16LE(offset: number = 0): number {
+  readInt16LE(offset: int = 0): number {
     const val = this.readUInt16LE(offset);
     return val >= 0x8000 ? val - 0x10000 : val;
   }
 
-  readUInt16BE(offset: number = 0): number {
+  readUInt16BE(offset: int = 0): number {
     return (this._data[offset]! << 8) | this._data[offset + 1]!;
   }
 
-  readUint16BE(offset: number = 0): number {
+  readUint16BE(offset: int = 0): number {
     return this.readUInt16BE(offset);
   }
 
-  readInt16BE(offset: number = 0): number {
+  readInt16BE(offset: int = 0): number {
     const val = this.readUInt16BE(offset);
     return val >= 0x8000 ? val - 0x10000 : val;
   }
 
-  readUInt32LE(offset: number = 0): number {
+  readUInt32LE(offset: int = 0): number {
     return (
       (this._data[offset]! |
         (this._data[offset + 1]! << 8) |
@@ -712,11 +712,11 @@ export class Buffer {
     );
   }
 
-  readUint32LE(offset: number = 0): number {
+  readUint32LE(offset: int = 0): number {
     return this.readUInt32LE(offset);
   }
 
-  readInt32LE(offset: number = 0): number {
+  readInt32LE(offset: int = 0): number {
     return (
       this._data[offset]! |
       (this._data[offset + 1]! << 8) |
@@ -725,7 +725,7 @@ export class Buffer {
     );
   }
 
-  readUInt32BE(offset: number = 0): number {
+  readUInt32BE(offset: int = 0): number {
     return (
       ((this._data[offset]! << 24) |
         (this._data[offset + 1]! << 16) |
@@ -735,11 +735,11 @@ export class Buffer {
     );
   }
 
-  readUint32BE(offset: number = 0): number {
+  readUint32BE(offset: int = 0): number {
     return this.readUInt32BE(offset);
   }
 
-  readInt32BE(offset: number = 0): number {
+  readInt32BE(offset: int = 0): number {
     return (
       (this._data[offset]! << 24) |
       (this._data[offset + 1]! << 16) |
@@ -751,7 +751,7 @@ export class Buffer {
   /**
    * Reads a float (32-bit) at offset, little-endian.
    */
-  readFloatLE(offset: number = 0): number {
+  readFloatLE(offset: int = 0): number {
     const bytes = copyRange(this._data, offset, offset + 4);
     const normalized = needsEndianSwap(true) ? reverseCopy(bytes) : bytes;
     return BitConverter.ToSingle(toByteArray(normalized), 0);
@@ -760,7 +760,7 @@ export class Buffer {
   /**
    * Reads a float (32-bit) at offset, big-endian.
    */
-  readFloatBE(offset: number = 0): number {
+  readFloatBE(offset: int = 0): number {
     const bytes = copyRange(this._data, offset, offset + 4);
     const normalized = needsEndianSwap(false) ? reverseCopy(bytes) : bytes;
     return BitConverter.ToSingle(toByteArray(normalized), 0);
@@ -769,7 +769,7 @@ export class Buffer {
   /**
    * Reads a double (64-bit) at offset, little-endian.
    */
-  readDoubleLE(offset: number = 0): number {
+  readDoubleLE(offset: int = 0): number {
     const bytes = copyRange(this._data, offset, offset + 8);
     const normalized = needsEndianSwap(true) ? reverseCopy(bytes) : bytes;
     return BitConverter.ToDouble(toByteArray(normalized), 0);
@@ -778,7 +778,7 @@ export class Buffer {
   /**
    * Reads a double (64-bit) at offset, big-endian.
    */
-  readDoubleBE(offset: number = 0): number {
+  readDoubleBE(offset: int = 0): number {
     const bytes = copyRange(this._data, offset, offset + 8);
     const normalized = needsEndianSwap(false) ? reverseCopy(bytes) : bytes;
     return BitConverter.ToDouble(toByteArray(normalized), 0);
@@ -787,20 +787,20 @@ export class Buffer {
   /**
    * Reads a 64-bit unsigned integer at offset, little-endian.
    */
-  readBigUInt64LE(offset: number = 0): ulong {
+  readBigUInt64LE(offset: int = 0): ulong {
     const bytes = copyRange(this._data, offset, offset + 8);
     const normalized = needsEndianSwap(true) ? reverseCopy(bytes) : bytes;
     return BitConverter.ToUInt64(toByteArray(normalized), 0);
   }
 
-  readBigUint64LE(offset: number = 0): ulong {
+  readBigUint64LE(offset: int = 0): ulong {
     return this.readBigUInt64LE(offset);
   }
 
   /**
    * Reads a 64-bit signed integer at offset, little-endian.
    */
-  readBigInt64LE(offset: number = 0): long {
+  readBigInt64LE(offset: int = 0): long {
     const bytes = copyRange(this._data, offset, offset + 8);
     const normalized = needsEndianSwap(true) ? reverseCopy(bytes) : bytes;
     return BitConverter.ToInt64(toByteArray(normalized), 0);
@@ -809,20 +809,20 @@ export class Buffer {
   /**
    * Reads a 64-bit unsigned integer at offset, big-endian.
    */
-  readBigUInt64BE(offset: number = 0): ulong {
+  readBigUInt64BE(offset: int = 0): ulong {
     const bytes = copyRange(this._data, offset, offset + 8);
     const normalized = needsEndianSwap(false) ? reverseCopy(bytes) : bytes;
     return BitConverter.ToUInt64(toByteArray(normalized), 0);
   }
 
-  readBigUint64BE(offset: number = 0): ulong {
+  readBigUint64BE(offset: int = 0): ulong {
     return this.readBigUInt64BE(offset);
   }
 
   /**
    * Reads a 64-bit signed integer at offset, big-endian.
    */
-  readBigInt64BE(offset: number = 0): long {
+  readBigInt64BE(offset: int = 0): long {
     const bytes = copyRange(this._data, offset, offset + 8);
     const normalized = needsEndianSwap(false) ? reverseCopy(bytes) : bytes;
     return BitConverter.ToInt64(toByteArray(normalized), 0);
@@ -831,7 +831,7 @@ export class Buffer {
   /**
    * Reads `byteLength` bytes from offset as unsigned int (up to 48-bit), LE.
    */
-  readUIntLE(offset: number, byteLength: number): number {
+  readUIntLE(offset: int, byteLength: int): number {
     if (byteLength < 1 || byteLength > 6) {
       throw new RangeError("byteLength must be between 1 and 6");
     }
@@ -842,14 +842,14 @@ export class Buffer {
     return value;
   }
 
-  readUintLE(offset: number, byteLength: number): number {
+  readUintLE(offset: int, byteLength: int): number {
     return this.readUIntLE(offset, byteLength);
   }
 
   /**
    * Reads `byteLength` bytes from offset as signed int (up to 48-bit), LE.
    */
-  readIntLE(offset: number, byteLength: number): number {
+  readIntLE(offset: int, byteLength: int): number {
     if (byteLength < 1 || byteLength > 6) {
       throw new RangeError("byteLength must be between 1 and 6");
     }
@@ -868,7 +868,7 @@ export class Buffer {
   /**
    * Reads `byteLength` bytes from offset as unsigned int (up to 48-bit), BE.
    */
-  readUIntBE(offset: number, byteLength: number): number {
+  readUIntBE(offset: int, byteLength: int): number {
     if (byteLength < 1 || byteLength > 6) {
       throw new RangeError("byteLength must be between 1 and 6");
     }
@@ -879,14 +879,14 @@ export class Buffer {
     return value;
   }
 
-  readUintBE(offset: number, byteLength: number): number {
+  readUintBE(offset: int, byteLength: int): number {
     return this.readUIntBE(offset, byteLength);
   }
 
   /**
    * Reads `byteLength` bytes from offset as signed int (up to 48-bit), BE.
    */
-  readIntBE(offset: number, byteLength: number): number {
+  readIntBE(offset: int, byteLength: int): number {
     if (byteLength < 1 || byteLength > 6) {
       throw new RangeError("byteLength must be between 1 and 6");
     }
@@ -903,53 +903,53 @@ export class Buffer {
 
   // ---- instance: write* methods ----
 
-  writeUInt8(value: number, offset: number = 0): number {
+  writeUInt8(value: number, offset: int = 0): number {
     this._data[offset] = value & 0xff;
     return offset + 1;
   }
 
-  writeUint8(value: number, offset: number = 0): number {
+  writeUint8(value: number, offset: int = 0): number {
     return this.writeUInt8(value, offset);
   }
 
-  writeInt8(value: number, offset: number = 0): number {
+  writeInt8(value: number, offset: int = 0): number {
     this._data[offset] = value & 0xff;
     return offset + 1;
   }
 
-  writeUInt16LE(value: number, offset: number = 0): number {
+  writeUInt16LE(value: number, offset: int = 0): number {
     this._data[offset] = value & 0xff;
     this._data[offset + 1] = (value >> 8) & 0xff;
     return offset + 2;
   }
 
-  writeUint16LE(value: number, offset: number = 0): number {
+  writeUint16LE(value: number, offset: int = 0): number {
     return this.writeUInt16LE(value, offset);
   }
 
-  writeInt16LE(value: number, offset: number = 0): number {
+  writeInt16LE(value: number, offset: int = 0): number {
     this._data[offset] = value & 0xff;
     this._data[offset + 1] = (value >> 8) & 0xff;
     return offset + 2;
   }
 
-  writeUInt16BE(value: number, offset: number = 0): number {
+  writeUInt16BE(value: number, offset: int = 0): number {
     this._data[offset] = (value >> 8) & 0xff;
     this._data[offset + 1] = value & 0xff;
     return offset + 2;
   }
 
-  writeUint16BE(value: number, offset: number = 0): number {
+  writeUint16BE(value: number, offset: int = 0): number {
     return this.writeUInt16BE(value, offset);
   }
 
-  writeInt16BE(value: number, offset: number = 0): number {
+  writeInt16BE(value: number, offset: int = 0): number {
     this._data[offset] = (value >> 8) & 0xff;
     this._data[offset + 1] = value & 0xff;
     return offset + 2;
   }
 
-  writeUInt32LE(value: number, offset: number = 0): number {
+  writeUInt32LE(value: number, offset: int = 0): number {
     this._data[offset] = value & 0xff;
     this._data[offset + 1] = (value >>> 8) & 0xff;
     this._data[offset + 2] = (value >>> 16) & 0xff;
@@ -957,11 +957,11 @@ export class Buffer {
     return offset + 4;
   }
 
-  writeUint32LE(value: number, offset: number = 0): number {
+  writeUint32LE(value: number, offset: int = 0): number {
     return this.writeUInt32LE(value, offset);
   }
 
-  writeInt32LE(value: number, offset: number = 0): number {
+  writeInt32LE(value: number, offset: int = 0): number {
     this._data[offset] = value & 0xff;
     this._data[offset + 1] = (value >>> 8) & 0xff;
     this._data[offset + 2] = (value >>> 16) & 0xff;
@@ -969,7 +969,7 @@ export class Buffer {
     return offset + 4;
   }
 
-  writeUInt32BE(value: number, offset: number = 0): number {
+  writeUInt32BE(value: number, offset: int = 0): number {
     this._data[offset] = (value >>> 24) & 0xff;
     this._data[offset + 1] = (value >>> 16) & 0xff;
     this._data[offset + 2] = (value >>> 8) & 0xff;
@@ -977,11 +977,11 @@ export class Buffer {
     return offset + 4;
   }
 
-  writeUint32BE(value: number, offset: number = 0): number {
+  writeUint32BE(value: number, offset: int = 0): number {
     return this.writeUInt32BE(value, offset);
   }
 
-  writeInt32BE(value: number, offset: number = 0): number {
+  writeInt32BE(value: number, offset: int = 0): number {
     this._data[offset] = (value >>> 24) & 0xff;
     this._data[offset + 1] = (value >>> 16) & 0xff;
     this._data[offset + 2] = (value >>> 8) & 0xff;
@@ -992,7 +992,7 @@ export class Buffer {
   /**
    * Writes a float (32-bit) at offset, little-endian.
    */
-  writeFloatLE(value: number, offset: number = 0): number {
+  writeFloatLE(value: number, offset: int = 0): number {
     const raw = toUint8Array(BitConverter.GetBytes(value));
     const bytes = needsEndianSwap(true) ? reverseCopy(raw) : raw;
     copyInto(bytes, 0, bytes.length, this._data, offset);
@@ -1002,7 +1002,7 @@ export class Buffer {
   /**
    * Writes a float (32-bit) at offset, big-endian.
    */
-  writeFloatBE(value: number, offset: number = 0): number {
+  writeFloatBE(value: number, offset: int = 0): number {
     const raw = toUint8Array(BitConverter.GetBytes(value));
     const bytes = needsEndianSwap(false) ? reverseCopy(raw) : raw;
     copyInto(bytes, 0, bytes.length, this._data, offset);
@@ -1012,7 +1012,7 @@ export class Buffer {
   /**
    * Writes a double (64-bit) at offset, little-endian.
    */
-  writeDoubleLE(value: number, offset: number = 0): number {
+  writeDoubleLE(value: number, offset: int = 0): number {
     const raw = toUint8Array(BitConverter.GetBytes(value));
     const bytes = needsEndianSwap(true) ? reverseCopy(raw) : raw;
     copyInto(bytes, 0, bytes.length, this._data, offset);
@@ -1022,7 +1022,7 @@ export class Buffer {
   /**
    * Writes a double (64-bit) at offset, big-endian.
    */
-  writeDoubleBE(value: number, offset: number = 0): number {
+  writeDoubleBE(value: number, offset: int = 0): number {
     const raw = toUint8Array(BitConverter.GetBytes(value));
     const bytes = needsEndianSwap(false) ? reverseCopy(raw) : raw;
     copyInto(bytes, 0, bytes.length, this._data, offset);
@@ -1032,7 +1032,7 @@ export class Buffer {
   /**
    * Writes a 64-bit unsigned integer at offset, little-endian.
    */
-  writeBigUInt64LE(value: ulong, offset: number = 0): number {
+  writeBigUInt64LE(value: ulong, offset: int = 0): number {
     const raw = toUint8Array(
       BitConverter.GetBytes(value),
     );
@@ -1041,14 +1041,14 @@ export class Buffer {
     return offset + 8;
   }
 
-  writeBigUint64LE(value: ulong, offset: number = 0): number {
+  writeBigUint64LE(value: ulong, offset: int = 0): number {
     return this.writeBigUInt64LE(value, offset);
   }
 
   /**
    * Writes a 64-bit signed integer at offset, little-endian.
    */
-  writeBigInt64LE(value: long, offset: number = 0): number {
+  writeBigInt64LE(value: long, offset: int = 0): number {
     const raw = toUint8Array(
       BitConverter.GetBytes(value),
     );
@@ -1060,7 +1060,7 @@ export class Buffer {
   /**
    * Writes a 64-bit unsigned integer at offset, big-endian.
    */
-  writeBigUInt64BE(value: ulong, offset: number = 0): number {
+  writeBigUInt64BE(value: ulong, offset: int = 0): number {
     const raw = toUint8Array(
       BitConverter.GetBytes(value),
     );
@@ -1069,14 +1069,14 @@ export class Buffer {
     return offset + 8;
   }
 
-  writeBigUint64BE(value: ulong, offset: number = 0): number {
+  writeBigUint64BE(value: ulong, offset: int = 0): number {
     return this.writeBigUInt64BE(value, offset);
   }
 
   /**
    * Writes a 64-bit signed integer at offset, big-endian.
    */
-  writeBigInt64BE(value: long, offset: number = 0): number {
+  writeBigInt64BE(value: long, offset: int = 0): number {
     const raw = toUint8Array(
       BitConverter.GetBytes(value),
     );
@@ -1088,7 +1088,7 @@ export class Buffer {
   /**
    * Writes `byteLength` bytes of unsigned `value` at offset, little-endian.
    */
-  writeUIntLE(value: number, offset: number, byteLength: number): number {
+  writeUIntLE(value: number, offset: int, byteLength: int): number {
     if (byteLength < 1 || byteLength > 6) {
       throw new RangeError("byteLength must be between 1 and 6");
     }
@@ -1100,14 +1100,14 @@ export class Buffer {
     return offset + byteLength;
   }
 
-  writeUintLE(value: number, offset: number, byteLength: number): number {
+  writeUintLE(value: number, offset: int, byteLength: int): number {
     return this.writeUIntLE(value, offset, byteLength);
   }
 
   /**
    * Writes `byteLength` bytes of signed `value` at offset, little-endian.
    */
-  writeIntLE(value: number, offset: number, byteLength: number): number {
+  writeIntLE(value: number, offset: int, byteLength: int): number {
     if (byteLength < 1 || byteLength > 6) {
       throw new RangeError("byteLength must be between 1 and 6");
     }
@@ -1122,7 +1122,7 @@ export class Buffer {
   /**
    * Writes `byteLength` bytes of unsigned `value` at offset, big-endian.
    */
-  writeUIntBE(value: number, offset: number, byteLength: number): number {
+  writeUIntBE(value: number, offset: int, byteLength: int): number {
     if (byteLength < 1 || byteLength > 6) {
       throw new RangeError("byteLength must be between 1 and 6");
     }
@@ -1134,14 +1134,14 @@ export class Buffer {
     return offset + byteLength;
   }
 
-  writeUintBE(value: number, offset: number, byteLength: number): number {
+  writeUintBE(value: number, offset: int, byteLength: int): number {
     return this.writeUIntBE(value, offset, byteLength);
   }
 
   /**
    * Writes `byteLength` bytes of signed `value` at offset, big-endian.
    */
-  writeIntBE(value: number, offset: number, byteLength: number): number {
+  writeIntBE(value: number, offset: int, byteLength: int): number {
     if (byteLength < 1 || byteLength > 6) {
       throw new RangeError("byteLength must be between 1 and 6");
     }
@@ -1171,7 +1171,7 @@ export class Buffer {
     return null;
   }
 
-  private writeHex(hex: string, offset: number, maxLength: number): number {
+  private writeHex(hex: string, offset: int, maxLength: int): number {
     const cleaned = stripWhitespace(hex);
     const bytesToWrite = Math.min(JSMath.floor(cleaned.length / 2), maxLength);
     for (let i = 0; i < bytesToWrite; i += 1) {
@@ -1182,8 +1182,8 @@ export class Buffer {
 
   private writeBase64(
     b64: string,
-    offset: number,
-    maxLength: number,
+    offset: int,
+    maxLength: int,
     isBase64Url: boolean,
   ): number {
     const decoded = isBase64Url

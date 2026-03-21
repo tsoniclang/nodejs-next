@@ -7,6 +7,7 @@
  */
 import { EventEmitter } from "../events-module.ts";
 import { Math as JSMath } from "@tsonic/js/index.js";
+import type { int } from "@tsonic/core/types.js";
 import type { Readable } from "../stream/readable.ts";
 import type { Writable } from "../stream/writable.ts";
 import { InterfaceOptions, CursorPosition } from "./interface-options.ts";
@@ -17,15 +18,15 @@ export class Interface extends EventEmitter {
   private readonly _terminal: boolean;
   private _prompt: string = "> ";
   private readonly _history: string[] = [];
-  private readonly _historySize: number;
+  private readonly _historySize: int;
   private readonly _removeHistoryDuplicates: boolean;
   private _line: string = "";
-  private _cursor: number = 0;
+  private _cursor: int = 0;
   private _closed: boolean = false;
   private _paused: boolean = false;
   private readonly _dataListener: ((...args: unknown[]) => void) | undefined;
   private readonly _endListener: ((...args: unknown[]) => void) | undefined;
-  private _historyIndex: number = -1;
+  private _historyIndex: int = -1;
   private _savedLine: string = "";
 
   /** Current line being processed. */

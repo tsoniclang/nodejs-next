@@ -12,6 +12,7 @@
  * for environments that don't support the stream option.
  */
 
+import type { int } from "@tsonic/core/types.js";
 import { bytesToString } from "../buffer/buffer-encoding.ts";
 
 export class StringDecoder {
@@ -212,7 +213,7 @@ export class StringDecoder {
     return bytesToString(buffer, this.encoding, 0, buffer.length);
   }
 
-  private copyRange(buffer: Uint8Array, start: number, end: number): Uint8Array {
+  private copyRange(buffer: Uint8Array, start: int, end: int): Uint8Array {
     const result = new Uint8Array(end - start);
     for (let index = 0; index < result.length; index += 1) {
       result[index] = buffer[start + index]!;

@@ -4,6 +4,9 @@
  * Baseline: nodejs-clr/src/nodejs/net/BlockList.cs
  */
 
+import { Math as JSMath } from "@tsonic/js/index.js";
+import type { int } from "@tsonic/core/types.js";
+
 /**
  * Represents a socket address.
  */
@@ -97,7 +100,7 @@ const isInSubnet = (
     return false;
   }
 
-  const fullBytes = JSMath.floor(prefix / 8);
+  const fullBytes: int = JSMath.floor(prefix / 8) as int;
   const remainingBits = prefix % 8;
 
   for (let i = 0; i < fullBytes; i = i + 1) {
@@ -198,4 +201,3 @@ export class BlockList {
     return rules;
   }
 }
-import { Math as JSMath } from "@tsonic/js/index.js";

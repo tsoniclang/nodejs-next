@@ -6,6 +6,7 @@
  */
 
 import { Math as JSMath } from "@tsonic/js/index.js";
+import type { int } from "@tsonic/core/types.js";
 import { UTF8Encoding } from "@tsonic/dotnet/System.Text.js";
 
 export type BufferEncoding =
@@ -44,8 +45,8 @@ const toByteArray = (bytes: Uint8Array): number[] => {
 
 const copyRange = (
   bytes: Uint8Array,
-  start: number,
-  end: number,
+  start: int,
+  end: int,
 ): Uint8Array => {
   const safeStart = start < 0 ? 0 : start;
   const safeEnd = end < safeStart ? safeStart : end;
@@ -139,8 +140,8 @@ export const stringToBytes = (
 export const bytesToString = (
   bytes: Uint8Array,
   encoding: string,
-  start: number,
-  end: number,
+  start: int,
+  end: int,
 ): string => {
   const norm = normalizeEncoding(encoding);
   const slice = copyRange(bytes, start, end);
@@ -243,8 +244,8 @@ export const hexToBytes = (hex: string): Uint8Array => {
 
 export const bytesToHex = (
   bytes: Uint8Array,
-  start: number,
-  end: number,
+  start: int,
+  end: int,
 ): string => {
   let hex = "";
   for (let i = start; i < end; i += 1) {
