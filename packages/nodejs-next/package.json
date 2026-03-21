@@ -1,0 +1,10 @@
+{
+  "name": "nodejs-next",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "src",
+    "tsonic",
+    "README.md"
+  ]
+}

@@ -81,6 +81,10 @@ out
 # Nuxt.js build / generate output
 .nuxt
 dist
+.tests
+.tsonic
+generated
+generated-tests
 
 # Gatsby files
 .cache/
@@ -137,3 +141,20 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# .NET build artifacts (per-project)
+packages/*/generated/bin/
+packages/*/generated/obj/
+
+# Optional: Uncomment to ignore generated C# files
+# packages/*/generated/**/*.cs
+
+# Output executables
+packages/*/out/
+packages/*/*.exe
+
+# Dependencies
+node_modules/
+
+# Internal tooling artifacts (restore scratch, caches)
+.tsonic/
