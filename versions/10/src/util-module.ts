@@ -149,12 +149,12 @@ export const inherits = (
 
 const deprecationWarnings = new Set<string>();
 
-export const deprecate = <TArgs extends unknown[], TResult>(
-  fn: (...args: TArgs) => TResult,
+export function deprecate(
+  fn: (...args: unknown[]) => unknown,
   message: string,
-  code?: string
-): ((...args: TArgs) => TResult) => {
-  return (...args: TArgs): TResult => {
+  code?: string,
+): (...args: unknown[]) => unknown {
+  return (...args: unknown[]): unknown => {
     const warning =
       code === undefined
         ? `DeprecationWarning: ${message}`
@@ -165,7 +165,7 @@ export const deprecate = <TArgs extends unknown[], TResult>(
     }
     return fn(...args);
   };
-};
+}
 
 export const debuglog = (section: string): DebugLogFunction => {
   const nodeDebug = Environment.GetEnvironmentVariable("NODE_DEBUG") ?? "";

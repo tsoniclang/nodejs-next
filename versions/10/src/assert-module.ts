@@ -216,7 +216,7 @@ export const strict = (
 
 export const rejects = async (
   fn: () => Promise<unknown>,
-  message?: string
+  message?: string,
 ): Promise<void> => {
   try {
     await fn();
@@ -232,7 +232,7 @@ export const rejects = async (
 
 export const doesNotReject = async (
   fn: () => Promise<unknown>,
-  message?: string
+  message?: string,
 ): Promise<void> => {
   try {
     await fn();

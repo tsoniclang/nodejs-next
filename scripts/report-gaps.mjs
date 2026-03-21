@@ -4,7 +4,15 @@ import { join, resolve } from "node:path";
 const repoRoot = resolve(new URL("..", import.meta.url).pathname);
 const clrTestsRoot = join(repoRoot, "..", "nodejs-clr", "tests", "nodejs.Tests");
 
-const implementedModules = new Set(["events", "path", "process"]);
+const implementedModules = new Set([
+  "assert",
+  "console",
+  "events",
+  "path",
+  "process",
+  "timers",
+  "util",
+]);
 const selftestRoot = join(repoRoot, "test", "fixtures", "selftest", "tests");
 
 const normalizeClrTestStem = (name) =>

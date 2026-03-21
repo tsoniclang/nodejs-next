@@ -16,16 +16,20 @@ The migration standard is:
 
 The first validated native slice in this repo covers:
 
+- `assert`
+- `console`
 - `path`
 - `events`
 - `process`
+- `timers`
+- `util`
 
 For that slice, `npm run report:gaps` now proves:
 
 - exact selftest file coverage parity against `nodejs-clr`
 - exact fact-count parity for the ported `tsonic test` suites
 
-The next work is moving through the remaining Node.js module matrix after the current `path` / `events` / `process` slice.
+The next work is moving through the remaining Node.js module matrix after the current `assert` / `console` / `events` / `path` / `process` / `timers` / `util` slice.
 
 ## Commands
 

@@ -14,9 +14,13 @@ Port `nodejs-clr` into a native Tsonic source package that becomes the future `@
 
 Implemented and validated natively in `versions/10/src`:
 
+- `assert`
+- `console`
 - `path`
 - `events`
 - `process`
+- `timers`
+- `util`
 
 ## Coverage rule
 
@@ -34,12 +38,8 @@ For an implemented module to count as migrated, the gap report must show:
 
 ## Next batches
 
-1. `timers`
-2. `console`
-3. `util`
-4. `assert`
-5. `fs`
-6. `stream`
-7. `http`
-8. `net`
-9. remaining module matrix
+1. `fs`
+2. `stream`
+3. `http`
+4. `net`
+5. remaining module matrix
