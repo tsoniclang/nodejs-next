@@ -66,8 +66,8 @@ export class SecretKeyObject extends KeyObject {
     return null;
   }
 
-  public get symmetricKeySize(): int {
-    return this._keyData.length as int;
+  public get symmetricKeySize(): int | null {
+    return this._keyData.length;
   }
 
   protected exportCore(_options?: unknown): Uint8Array {
@@ -97,7 +97,7 @@ export class PublicKeyObject extends KeyObject {
     return this._keyType;
   }
 
-  public get symmetricKeySize(): null {
+  public get symmetricKeySize(): int | null {
     return null;
   }
 
@@ -133,7 +133,7 @@ export class PrivateKeyObject extends KeyObject {
     return this._keyType;
   }
 
-  public get symmetricKeySize(): null {
+  public get symmetricKeySize(): int | null {
     return null;
   }
 

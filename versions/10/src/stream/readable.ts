@@ -40,7 +40,7 @@ export class Readable extends Stream {
    * Number of bytes (or objects) in the queue ready to be read.
    */
   public get readableLength(): int {
-    return this._buffer.length as int;
+    return this._buffer.length;
   }
 
   /** Is true after destroy() has been called. */

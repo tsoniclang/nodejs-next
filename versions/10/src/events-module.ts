@@ -185,7 +185,7 @@ export class EventEmitter {
 
   public listenerCount(eventName: string): int {
     const registrations = this.listenersByEvent.get(eventName);
-    return ((registrations?.length ?? 0) as int);
+    return registrations?.length ?? 0;
   }
 
   public eventNames(): string[] {
