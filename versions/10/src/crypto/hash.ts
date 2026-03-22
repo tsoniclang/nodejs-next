@@ -1,3 +1,10 @@
+import {
+  computeHashBytes,
+  concatBytes,
+  decodeInputBytes,
+  encodeOutputBytes,
+} from "./crypto-helpers.ts";
+
 /**
  * Node.js crypto Hash class.
  *
@@ -9,6 +16,7 @@
  */
 export class Hash {
   private readonly _algorithm: string;
+  private readonly _chunks: Uint8Array[] = [];
   private _finalized: boolean = false;
 
   public constructor(algorithm: string) {
@@ -18,15 +26,14 @@ export class Hash {
   /**
    * Updates the hash content with the given data.
    */
-  public update(data: string, _inputEncoding?: string): Hash;
+  public update(data: string, inputEncoding?: string): Hash;
   public update(data: Uint8Array): Hash;
-  public update(data: string | Uint8Array, _inputEncoding?: string): Hash {
+  public update(data: string | Uint8Array, inputEncoding?: string): Hash {
     if (this._finalized) {
       throw new Error("Digest already called");
     }
 
-    // TODO: actual hash update with data
-    void data;
+    this._chunks.push(decodeInputBytes(data, inputEncoding ?? "utf8"));
     return this;
   }
 
@@ -42,19 +49,17 @@ export class Hash {
     }
 
     this._finalized = true;
-
-    if (typeof encodingOrLength === "number") {
-      // TODO: SHAKE output length variant
-      return new Uint8Array(encodingOrLength);
-    }
+    const bytes = computeHashBytes(
+      this._algorithm,
+      concatBytes(...this._chunks),
+      typeof encodingOrLength === "number" ? encodingOrLength : undefined,
+    );
 
     if (typeof encodingOrLength === "string") {
-      // TODO: actual hash computation returning encoded string
-      return "";
+      return encodeOutputBytes(bytes, encodingOrLength) as string;
     }
 
-    // TODO: actual hash computation returning raw bytes
-    return new Uint8Array(0);
+    return bytes;
   }
 
   /**
@@ -65,7 +70,10 @@ export class Hash {
       throw new Error("Cannot copy finalized hash");
     }
 
-    // TODO: actual state cloning
-    return new Hash(this._algorithm);
+    const copy = new Hash(this._algorithm);
+    for (let index = 0; index < this._chunks.length; index += 1) {
+      copy._chunks.push(this._chunks[index]!);
+    }
+    return copy;
   }
 }

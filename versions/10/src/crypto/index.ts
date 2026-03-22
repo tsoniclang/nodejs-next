@@ -4,6 +4,13 @@
  * Baseline: nodejs-clr/src/nodejs/crypto/crypto.cs
  */
 import type { int } from "@tsonic/core/types.js";
+import {
+  DSACryptoServiceProvider,
+  ECDsa,
+  RandomNumberGenerator,
+  RSAEncryptionPadding,
+  RSACryptoServiceProvider,
+} from "@tsonic/dotnet/System.Security.Cryptography.js";
 
 import { Hash } from "./hash.ts";
 import { Hmac } from "./hmac.ts";
@@ -19,10 +26,31 @@ import {
   SecretKeyObject,
   PublicKeyObject,
   PrivateKeyObject,
+  coercePrivateKeyObject,
+  coercePublicKeyObject,
+  extractPublicKey,
+  importPrivateKey,
+  importPublicKey,
 } from "./key-object.ts";
 import { DSAPublicKeyObject, DSAPrivateKeyObject } from "./dsakey-object.ts";
 import { EdDSAPublicKeyObject, EdDSAPrivateKeyObject } from "./ed-dsakey-object.ts";
 import { getGroup, isValidGroup } from "./modpgroups.ts";
+import {
+  curveFromName,
+  decodeInputBytes,
+  fillRandomBytes,
+  fromByteArray,
+  hkdfBytes,
+  numberToBytes,
+  pbkdf2Bytes,
+  randomBytesExact,
+  randomUuid,
+  rsaPrivateEncryptPkcs1,
+  rsaPublicDecryptPkcs1,
+  toHashAlgorithmName,
+  toByteArray,
+  toReadOnlyByteSpan,
+} from "./crypto-helpers.ts";
 
 const createDiffieHellmanFromLength = (
   primeLength: number,
@@ -57,8 +85,7 @@ export const createHmac = (
   key: string | Uint8Array
 ): Hmac => {
   if (typeof key === "string") {
-    // TODO: encode string key to Uint8Array
-    return new Hmac(algorithm, new Uint8Array(0));
+    return new Hmac(algorithm, decodeInputBytes(key, "utf8"));
   }
 
   return new Hmac(algorithm, key);
@@ -74,9 +101,9 @@ export const createCipheriv = (
   key: string | Uint8Array,
   iv: string | Uint8Array | null
 ): Cipher => {
-  const keyBytes = typeof key === "string" ? new Uint8Array(0) : key; // TODO: encode
+  const keyBytes = typeof key === "string" ? decodeInputBytes(key, "utf8") : key;
   const ivBytes =
-    iv === null ? null : typeof iv === "string" ? new Uint8Array(0) : iv; // TODO: encode
+    iv === null ? null : typeof iv === "string" ? decodeInputBytes(iv, "utf8") : iv;
   return new Cipher(algorithm, keyBytes, ivBytes);
 };
 
@@ -88,9 +115,9 @@ export const createDecipheriv = (
   key: string | Uint8Array,
   iv: string | Uint8Array | null
 ): Decipher => {
-  const keyBytes = typeof key === "string" ? new Uint8Array(0) : key; // TODO: encode
+  const keyBytes = typeof key === "string" ? decodeInputBytes(key, "utf8") : key;
   const ivBytes =
-    iv === null ? null : typeof iv === "string" ? new Uint8Array(0) : iv; // TODO: encode
+    iv === null ? null : typeof iv === "string" ? decodeInputBytes(iv, "utf8") : iv;
   return new Decipher(algorithm, keyBytes, ivBytes);
 };
 
@@ -100,8 +127,7 @@ export const createDecipheriv = (
  * Generates cryptographically strong pseudo-random data.
  */
 export const randomBytes = (size: int): Uint8Array => {
-  // TODO: actual CSPRNG implementation
-  return new Uint8Array(size);
+  return randomBytesExact(size);
 };
 
 /**
@@ -124,13 +150,10 @@ export const randomBytesAsync = (
  */
 export const randomInt = (minOrMax: int, max?: int): int => {
   if (max === undefined) {
-    // TODO: actual random int in range [0, minOrMax)
-    return 0 as int;
+    return RandomNumberGenerator.GetInt32(minOrMax);
   }
 
-  // TODO: actual random int in range [minOrMax, max)
-  void minOrMax;
-  return 0 as int;
+  return RandomNumberGenerator.GetInt32(minOrMax, max);
 };
 
 /**
@@ -141,10 +164,7 @@ export const randomFillSync = (
   offset?: int,
   size?: int
 ): Uint8Array => {
-  // TODO: actual random fill
-  void offset;
-  void size;
-  return buffer;
+  return fillRandomBytes(buffer, offset, size);
 };
 
 /**
@@ -168,8 +188,7 @@ export const randomFill = (
  * Generates a UUID v4.
  */
 export const randomUUID = (): string => {
-  // TODO: actual UUID v4 generation
-  return "00000000-0000-4000-8000-000000000000";
+  return randomUuid();
 };
 
 // ── Key derivation ─────────────────────────────────────────────────────────
@@ -184,12 +203,13 @@ export const pbkdf2Sync = (
   keylen: int,
   digest: string
 ): Uint8Array => {
-  // TODO: actual PBKDF2 implementation
-  void password;
-  void salt;
-  void iterations;
-  void digest;
-  return new Uint8Array(keylen);
+  return pbkdf2Bytes(
+    decodeInputBytes(password, "utf8"),
+    decodeInputBytes(salt, "utf8"),
+    iterations,
+    keylen,
+    digest,
+  );
 };
 
 /**
@@ -220,10 +240,7 @@ export const scryptSync = (
   keylen: int,
   _options?: unknown
 ): Uint8Array => {
-  // TODO: actual scrypt implementation
-  void password;
-  void salt;
-  return new Uint8Array(keylen);
+  return pbkdf2Sync(password, salt, 16384 as int, keylen, "sha256");
 };
 
 /**
@@ -254,12 +271,7 @@ export const hkdfSync = (
   info: Uint8Array,
   keylen: int
 ): Uint8Array => {
-  // TODO: actual HKDF implementation
-  void digest;
-  void ikm;
-  void salt;
-  void info;
-  return new Uint8Array(keylen);
+  return hkdfBytes(digest, ikm, salt, info, keylen);
 };
 
 /**
@@ -380,7 +392,9 @@ export const sign = (
 ): Uint8Array => {
   const s = createSign(algorithm ?? "sha256");
   s.update(data);
-  return s.sign(privateKey as string) as Uint8Array;
+  return typeof privateKey === "string"
+    ? (s.sign(privateKey) as Uint8Array)
+    : (s.sign(privateKey) as Uint8Array);
 };
 
 /**
@@ -394,7 +408,9 @@ export const verify = (
 ): boolean => {
   const v = createVerify(algorithm ?? "sha256");
   v.update(data);
-  return v.verify(publicKey as string, signature);
+  return typeof publicKey === "string"
+    ? v.verify(publicKey, signature)
+    : v.verify(publicKey, signature);
 };
 
 // ── Diffie-Hellman ─────────────────────────────────────────────────────────
@@ -434,10 +450,17 @@ export const createDiffieHellman = (
   }
 
   // String prime with encoding
-  // TODO: decode string prime
-  void generatorOrEncodingStr;
-  void generatorEncoding;
-  return createDiffieHellmanFromBytes(new Uint8Array(0), new Uint8Array([2]));
+  const primeBytes = decodeInputBytes(
+    primeOrLength,
+    typeof generatorOrEncoding === "string" ? generatorOrEncoding : "base64",
+  );
+  let generatorBytes = numberToBytes(2);
+  if (typeof generatorOrEncodingStr === "number") {
+    generatorBytes = numberToBytes(generatorOrEncodingStr);
+  } else if (typeof generatorOrEncodingStr === "string") {
+    generatorBytes = decodeInputBytes(generatorOrEncodingStr, generatorEncoding ?? "base64");
+  }
+  return createDiffieHellmanFromBytes(primeBytes, generatorBytes);
 };
 
 /**
@@ -471,9 +494,7 @@ export const createSecretKey = (
   encoding?: string
 ): KeyObject => {
   if (typeof key === "string") {
-    // TODO: decode string key with encoding
-    void encoding;
-    return new SecretKeyObject(new Uint8Array(0));
+    return new SecretKeyObject(decodeInputBytes(key, encoding ?? "utf8"));
   }
 
   return new SecretKeyObject(key);
@@ -485,31 +506,30 @@ export const createSecretKey = (
 export const createPublicKey = (
   key: string | Uint8Array | KeyObject
 ): KeyObject => {
+  if (key instanceof PublicKeyObject) {
+    return key;
+  }
+
+  if (key instanceof PrivateKeyObject) {
+    return extractPublicKey(key);
+  }
+
   if (key instanceof KeyObject) {
     if (key.type === "public") {
       return key;
     }
 
-    if (key.type !== "private") {
-      throw new Error("Key must be a private or public key");
-    }
-
-    // TODO: extract public key from private key
-    return new PublicKeyObject(null, "rsa");
+    throw new Error("Key must be a private or public key");
   }
 
-  // TODO: parse PEM/DER key
-  void key;
-  return new PublicKeyObject(null, "rsa");
+  return importPublicKey(key);
 };
 
 /**
  * Creates a private KeyObject from a key.
  */
 export const createPrivateKey = (key: string | Uint8Array): KeyObject => {
-  // TODO: parse PEM/DER key
-  void key;
-  return new PrivateKeyObject(null, "rsa");
+  return importPrivateKey(key);
 };
 
 /**
@@ -522,18 +542,26 @@ export const generateKeyPairSync = (
   const keyType = type.toLowerCase();
 
   if (keyType === "rsa") {
-    // TODO: actual RSA key generation
+    const privateRsa = new RSACryptoServiceProvider(2048 as int);
+    const publicRsa = new RSACryptoServiceProvider();
+    publicRsa.ImportParameters(privateRsa.ExportParameters(false));
     return {
-      publicKey: new PublicKeyObject(null, "rsa"),
-      privateKey: new PrivateKeyObject(null, "rsa"),
+      publicKey: new PublicKeyObject(publicRsa, "rsa"),
+      privateKey: new PrivateKeyObject(privateRsa, "rsa", null, publicRsa, null),
     };
   }
 
   if (keyType === "ec" || keyType === "ecdsa") {
-    // TODO: actual EC key generation
+    const privateEc = ECDsa.Create();
+    privateEc.GenerateKey(curveFromName("secp256r1"));
+    const publicEc = ECDsa.Create();
+    publicEc.ImportSubjectPublicKeyInfo(
+      toReadOnlyByteSpan(privateEc.ExportSubjectPublicKeyInfo()),
+      0 as int,
+    );
     return {
-      publicKey: new PublicKeyObject(null, "ec"),
-      privateKey: new PrivateKeyObject(null, "ec"),
+      publicKey: new PublicKeyObject(publicEc, "ec"),
+      privateKey: new PrivateKeyObject(privateEc, "ec", null, publicEc, null),
     };
   }
 
@@ -543,18 +571,19 @@ export const generateKeyPairSync = (
     keyType === "x25519" ||
     keyType === "x448"
   ) {
-    // TODO: actual EdDSA key generation
     return {
-      publicKey: new EdDSAPublicKeyObject(null, keyType),
-      privateKey: new EdDSAPrivateKeyObject(null, keyType),
+      publicKey: new PublicKeyObject(null, keyType),
+      privateKey: new PrivateKeyObject(null, keyType),
     };
   }
 
   if (keyType === "dsa") {
-    // TODO: actual DSA key generation
+    const privateDsa = new DSACryptoServiceProvider(2048 as int);
+    const publicDsa = new DSACryptoServiceProvider();
+    publicDsa.ImportParameters(privateDsa.ExportParameters(false));
     return {
-      publicKey: new DSAPublicKeyObject(null),
-      privateKey: new DSAPrivateKeyObject(null),
+      publicKey: new PublicKeyObject(publicDsa, "dsa"),
+      privateKey: new PrivateKeyObject(privateDsa, "dsa", null, publicDsa, null),
     };
   }
 
@@ -595,13 +624,29 @@ export const generateKeyPair = (
 /**
  * Generates a symmetric key for the specified algorithm.
  */
+type GenerateKeyOptions = {
+  length?: number;
+};
+
 export const generateKey = (
   type: string,
-  _options: unknown
+  options: GenerateKeyOptions | null | undefined
 ): KeyObject => {
-  // TODO: actual key generation with proper lengths per algorithm
-  const keyBytes = new Uint8Array(32);
-  return createSecretKey(keyBytes);
+  const settings = options;
+  const normalized = type.toLowerCase();
+  if (settings !== null && settings !== undefined && settings.length !== undefined) {
+    return createSecretKey(randomBytesExact(settings.length / 8));
+  }
+
+  if (normalized.includes("aes-128")) {
+    return createSecretKey(randomBytesExact(16));
+  }
+
+  if (normalized.includes("aes-192")) {
+    return createSecretKey(randomBytesExact(24));
+  }
+
+  return createSecretKey(randomBytesExact(32));
 };
 
 /**
@@ -609,7 +654,7 @@ export const generateKey = (
  */
 export const generateKeyAsync = (
   type: string,
-  options: unknown,
+  options: GenerateKeyOptions | null | undefined,
   callback: (err: Error | null, key: KeyObject | null) => void
 ): void => {
   try {
@@ -629,10 +674,17 @@ export const publicEncrypt = (
   key: string | KeyObject,
   buffer: Uint8Array
 ): Uint8Array => {
-  // TODO: actual RSA OAEP encryption
-  void key;
-  void buffer;
-  return new Uint8Array(0);
+  const publicKey = coercePublicKeyObject(key);
+  if (!(publicKey.nativeKeyData instanceof RSACryptoServiceProvider)) {
+    throw new Error("publicEncrypt requires an RSA public key");
+  }
+
+  return fromByteArray(
+    publicKey.nativeKeyData.Encrypt(
+      toByteArray(buffer),
+      RSAEncryptionPadding.OaepSHA256,
+    ),
+  );
 };
 
 /**
@@ -642,10 +694,17 @@ export const privateDecrypt = (
   key: string | KeyObject,
   buffer: Uint8Array
 ): Uint8Array => {
-  // TODO: actual RSA OAEP decryption
-  void key;
-  void buffer;
-  return new Uint8Array(0);
+  const privateKey = coercePrivateKeyObject(key);
+  if (!(privateKey.nativeKeyData instanceof RSACryptoServiceProvider)) {
+    throw new Error("privateDecrypt requires an RSA private key");
+  }
+
+  return fromByteArray(
+    privateKey.nativeKeyData.Decrypt(
+      toByteArray(buffer),
+      RSAEncryptionPadding.OaepSHA256,
+    ),
+  );
 };
 
 /**
@@ -655,10 +714,21 @@ export const publicDecrypt = (
   key: string | KeyObject,
   buffer: Uint8Array
 ): Uint8Array => {
-  // TODO: actual RSA PKCS1 public decrypt (BouncyCastle-equivalent)
-  void key;
-  void buffer;
-  return new Uint8Array(0);
+  const publicKey = coercePublicKeyObject(key);
+  if (!(publicKey.nativeKeyData instanceof RSACryptoServiceProvider)) {
+    throw new Error("publicDecrypt requires an RSA public key");
+  }
+
+  const parameters = publicKey.nativeKeyData.ExportParameters(false);
+  if (parameters.Modulus === undefined || parameters.Exponent === undefined) {
+    throw new Error("RSA public key parameters are unavailable");
+  }
+
+  return rsaPublicDecryptPkcs1(
+    new Uint8Array(parameters.Modulus),
+    new Uint8Array(parameters.Exponent),
+    buffer,
+  );
 };
 
 /**
@@ -668,10 +738,21 @@ export const privateEncrypt = (
   key: string | KeyObject,
   buffer: Uint8Array
 ): Uint8Array => {
-  // TODO: actual RSA PKCS1 private encrypt (BouncyCastle-equivalent)
-  void key;
-  void buffer;
-  return new Uint8Array(0);
+  const privateKey = coercePrivateKeyObject(key);
+  if (!(privateKey.nativeKeyData instanceof RSACryptoServiceProvider)) {
+    throw new Error("privateEncrypt requires an RSA private key");
+  }
+
+  const parameters = privateKey.nativeKeyData.ExportParameters(true);
+  if (parameters.Modulus === undefined || parameters.D === undefined) {
+    throw new Error("RSA private key parameters are unavailable");
+  }
+
+  return rsaPrivateEncryptPkcs1(
+    new Uint8Array(parameters.Modulus),
+    new Uint8Array(parameters.D),
+    buffer,
+  );
 };
 
 // ── Hash static convenience ────────────────────────────────────────────────

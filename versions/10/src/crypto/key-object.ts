@@ -4,6 +4,16 @@
  * Baseline: nodejs-clr/src/nodejs/crypto/KeyObject.cs
  */
 import type { int } from "@tsonic/core/types.js";
+import {
+  DSACryptoServiceProvider,
+  ECDsa,
+  RSACryptoServiceProvider,
+} from "@tsonic/dotnet/System.Security.Cryptography.js";
+import {
+  curveFromName,
+  toReadOnlyByteSpan,
+} from "./crypto-helpers.ts";
+import { base64ToBytes } from "../buffer/buffer-encoding.ts";
 
 /**
  * Represents a cryptographic key.
@@ -82,11 +92,13 @@ export class SecretKeyObject extends KeyObject {
 export class PublicKeyObject extends KeyObject {
   private readonly _keyType: string;
   private readonly _keyData: unknown;
+  private readonly _pem: string | null;
 
-  public constructor(keyData: unknown, keyType: string) {
+  public constructor(keyData: unknown, keyType: string, pem: string | null = null) {
     super();
     this._keyData = keyData;
     this._keyType = keyType;
+    this._pem = pem;
   }
 
   public get type(): string {
@@ -101,14 +113,28 @@ export class PublicKeyObject extends KeyObject {
     return null;
   }
 
-  protected exportCore(_options?: unknown): unknown {
-    // TODO: actual PEM/DER export
+  public get nativeKeyData(): unknown {
     return this._keyData;
   }
 
-  public exportFormatted(_format: string, _type?: string): string {
-    // TODO: actual PEM/DER formatted export
-    throw new Error("TODO: PublicKeyObject.exportFormatted not yet implemented");
+  public get pem(): string | null {
+    return this._pem;
+  }
+
+  protected exportCore(_options?: unknown): unknown {
+    if (this._pem !== null) {
+      return this._pem;
+    }
+
+    return this._keyData;
+  }
+
+  public exportFormatted(format: string, _type?: string): string {
+    if (this._pem !== null && format.toLowerCase() === "pem") {
+      return this._pem;
+    }
+
+    throw new Error("PublicKeyObject.exportFormatted is only supported for PEM keys");
   }
 }
 
@@ -118,11 +144,23 @@ export class PublicKeyObject extends KeyObject {
 export class PrivateKeyObject extends KeyObject {
   private readonly _keyType: string;
   private readonly _keyData: unknown;
+  private readonly _pem: string | null;
+  private readonly _publicKeyData: unknown;
+  private readonly _publicPem: string | null;
 
-  public constructor(keyData: unknown, keyType: string) {
+  public constructor(
+    keyData: unknown,
+    keyType: string,
+    pem: string | null = null,
+    publicKeyData: unknown = null,
+    publicPem: string | null = null,
+  ) {
     super();
     this._keyData = keyData;
     this._keyType = keyType;
+    this._pem = pem;
+    this._publicKeyData = publicKeyData;
+    this._publicPem = publicPem;
   }
 
   public get type(): string {
@@ -137,18 +175,286 @@ export class PrivateKeyObject extends KeyObject {
     return null;
   }
 
+  public get nativeKeyData(): unknown {
+    return this._keyData;
+  }
+
+  public get pem(): string | null {
+    return this._pem;
+  }
+
+  public get publicKeyData(): unknown {
+    return this._publicKeyData;
+  }
+
+  public get publicPem(): string | null {
+    return this._publicPem;
+  }
+
   protected exportCore(_options?: unknown): unknown {
-    // TODO: actual PEM/DER export
+    if (this._pem !== null) {
+      return this._pem;
+    }
+
     return this._keyData;
   }
 
   public exportFormatted(
-    _format: string,
+    format: string,
     _type?: string,
     _cipher?: string,
     _passphrase?: string
   ): string {
-    // TODO: actual PEM/DER formatted export
-    throw new Error("TODO: PrivateKeyObject.exportFormatted not yet implemented");
+    if (this._pem !== null && format.toLowerCase() === "pem") {
+      return this._pem;
+    }
+
+    throw new Error("PrivateKeyObject.exportFormatted is only supported for PEM keys");
   }
 }
+
+const stripPemBody = (value: string): string => {
+  let body = "";
+  let currentLine = "";
+  for (let index = 0; index <= value.length; index += 1) {
+    const char = index === value.length ? "\n" : value.charAt(index);
+    if (char !== "\n" && char !== "\r") {
+      currentLine += char;
+      continue;
+    }
+
+    const line = currentLine.trim();
+    currentLine = "";
+    if (line.length === 0 || line.startsWith("-----")) {
+      continue;
+    }
+    body += line;
+  }
+  return body;
+};
+
+const pemToBytes = (pem: string): Uint8Array => {
+  return base64ToBytes(stripPemBody(pem));
+};
+
+const emptyPlaceholderPublicKey = (): PublicKeyObject => {
+  return new PublicKeyObject(null, "rsa");
+};
+
+const emptyPlaceholderPrivateKey = (): PrivateKeyObject => {
+  return new PrivateKeyObject(null, "rsa");
+};
+
+const tryImportRsaPublic = (
+  bytes: Uint8Array,
+  pem: string | null,
+): PublicKeyObject | null => {
+  try {
+    const rsa = new RSACryptoServiceProvider();
+    rsa.ImportSubjectPublicKeyInfo(toReadOnlyByteSpan(bytes), 0 as int);
+    return new PublicKeyObject(rsa, "rsa", pem);
+  } catch {
+    return null;
+  }
+};
+
+const tryImportDsaPublic = (
+  bytes: Uint8Array,
+  pem: string | null,
+): PublicKeyObject | null => {
+  try {
+    const dsa = new DSACryptoServiceProvider();
+    dsa.ImportSubjectPublicKeyInfo(toReadOnlyByteSpan(bytes), 0 as int);
+    return new PublicKeyObject(dsa, "dsa", pem);
+  } catch {
+    return null;
+  }
+};
+
+const tryImportEcPublic = (
+  bytes: Uint8Array,
+  pem: string | null,
+): PublicKeyObject | null => {
+  try {
+    const ec = ECDsa.Create(curveFromName("secp256r1"));
+    ec.ImportSubjectPublicKeyInfo(toReadOnlyByteSpan(bytes), 0 as int);
+    return new PublicKeyObject(ec, "ec", pem);
+  } catch {
+    return null;
+  }
+};
+
+const tryImportRsaPrivate = (
+  bytes: Uint8Array,
+  pem: string | null,
+): PrivateKeyObject | null => {
+  try {
+    const rsa = new RSACryptoServiceProvider();
+    rsa.ImportPkcs8PrivateKey(toReadOnlyByteSpan(bytes), 0 as int);
+    const publicRsa = new RSACryptoServiceProvider();
+    publicRsa.ImportParameters(rsa.ExportParameters(false));
+    return new PrivateKeyObject(rsa, "rsa", pem, publicRsa, null);
+  } catch {
+    return null;
+  }
+};
+
+const tryImportDsaPrivate = (
+  bytes: Uint8Array,
+  pem: string | null,
+): PrivateKeyObject | null => {
+  try {
+    const dsa = new DSACryptoServiceProvider();
+    dsa.ImportPkcs8PrivateKey(toReadOnlyByteSpan(bytes), 0 as int);
+    const publicDsa = new DSACryptoServiceProvider();
+    publicDsa.ImportParameters(dsa.ExportParameters(false));
+    return new PrivateKeyObject(dsa, "dsa", pem, publicDsa, null);
+  } catch {
+    return null;
+  }
+};
+
+const tryImportEcPrivate = (
+  bytes: Uint8Array,
+  pem: string | null,
+): PrivateKeyObject | null => {
+  try {
+    const ec = ECDsa.Create(curveFromName("secp256r1"));
+    ec.ImportPkcs8PrivateKey(toReadOnlyByteSpan(bytes), 0 as int);
+    const publicEc = ECDsa.Create(curveFromName("secp256r1"));
+    publicEc.ImportSubjectPublicKeyInfo(
+      toReadOnlyByteSpan(ec.ExportSubjectPublicKeyInfo()),
+      0 as int,
+    );
+    return new PrivateKeyObject(ec, "ec", pem, publicEc, null);
+  } catch {
+    return null;
+  }
+};
+
+export const importPublicKey = (
+  key: string | Uint8Array,
+): PublicKeyObject => {
+  const pem = typeof key === "string" ? key : null;
+  const bytes = typeof key === "string" ? pemToBytes(key) : key;
+
+  if (bytes.length === 0) {
+    return emptyPlaceholderPublicKey();
+  }
+
+  const rsa = tryImportRsaPublic(bytes, pem);
+  if (rsa !== null) {
+    return rsa;
+  }
+
+  const dsa = tryImportDsaPublic(bytes, pem);
+  if (dsa !== null) {
+    return dsa;
+  }
+
+  const ec = tryImportEcPublic(bytes, pem);
+  if (ec !== null) {
+    return ec;
+  }
+
+  throw new Error("Unsupported public key format");
+};
+
+export const importPrivateKey = (
+  key: string | Uint8Array,
+): PrivateKeyObject => {
+  const pem = typeof key === "string" ? key : null;
+  const bytes = typeof key === "string" ? pemToBytes(key) : key;
+
+  if (bytes.length === 0) {
+    return emptyPlaceholderPrivateKey();
+  }
+
+  const rsa = tryImportRsaPrivate(bytes, pem);
+  if (rsa !== null) {
+    return rsa;
+  }
+
+  const dsa = tryImportDsaPrivate(bytes, pem);
+  if (dsa !== null) {
+    return dsa;
+  }
+
+  const ec = tryImportEcPrivate(bytes, pem);
+  if (ec !== null) {
+    return ec;
+  }
+
+  throw new Error("Unsupported private key format");
+};
+
+export const extractPublicKey = (
+  key: PrivateKeyObject,
+): PublicKeyObject => {
+  if (key.publicKeyData !== null && key.publicKeyData !== undefined) {
+    return new PublicKeyObject(key.publicKeyData, key.asymmetricKeyType, key.publicPem);
+  }
+
+  if (key.nativeKeyData instanceof RSACryptoServiceProvider) {
+    const publicRsa = new RSACryptoServiceProvider();
+    publicRsa.ImportParameters(key.nativeKeyData.ExportParameters(false));
+    return new PublicKeyObject(publicRsa, "rsa", key.publicPem);
+  }
+
+  if (key.nativeKeyData instanceof DSACryptoServiceProvider) {
+    const publicDsa = new DSACryptoServiceProvider();
+    publicDsa.ImportParameters(key.nativeKeyData.ExportParameters(false));
+    return new PublicKeyObject(publicDsa, "dsa", key.publicPem);
+  }
+
+  if (key.nativeKeyData instanceof ECDsa) {
+    const publicEc = ECDsa.Create(curveFromName("secp256r1"));
+    publicEc.ImportSubjectPublicKeyInfo(
+      toReadOnlyByteSpan(key.nativeKeyData.ExportSubjectPublicKeyInfo()),
+      0 as int,
+    );
+    return new PublicKeyObject(publicEc, "ec", key.publicPem);
+  }
+
+  return new PublicKeyObject(null, key.asymmetricKeyType ?? "rsa", key.publicPem);
+};
+
+export const coercePublicKeyObject = (
+  key: string | Uint8Array | KeyObject,
+): PublicKeyObject => {
+  if (key instanceof PublicKeyObject) {
+    return key;
+  }
+
+  if (key instanceof PrivateKeyObject) {
+    return extractPublicKey(key);
+  }
+
+  if (key instanceof KeyObject) {
+    if (key.type === "public") {
+      return new PublicKeyObject(null, key.asymmetricKeyType ?? "rsa");
+    }
+
+    throw new Error("Key must be a private or public key");
+  }
+
+  return importPublicKey(key);
+};
+
+export const coercePrivateKeyObject = (
+  key: string | Uint8Array | KeyObject,
+): PrivateKeyObject => {
+  if (key instanceof PrivateKeyObject) {
+    return key;
+  }
+
+  if (key instanceof PublicKeyObject) {
+    throw new Error("Key must be a private key");
+  }
+
+  if (key instanceof KeyObject) {
+    throw new Error("Key must be a private key");
+  }
+
+  return importPrivateKey(key);
+};
