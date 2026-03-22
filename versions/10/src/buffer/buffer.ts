@@ -10,7 +10,7 @@
 
 import { Math as JSMath } from "@tsonic/js/index.js";
 import { BitConverter } from "@tsonic/dotnet/System.js";
-import type { int, long, ulong } from "@tsonic/core/types.js";
+import type { byte, int, long, ulong } from "@tsonic/core/types.js";
 
 import {
   byteLengthOfString,
@@ -23,12 +23,24 @@ import {
 } from "./buffer-encoding.ts";
 
 class BufferInternals {
+  static minInt(left: int, right: int): int {
+    return left < right ? left : right;
+  }
+
+  static maxInt(left: int, right: int): int {
+    return left > right ? left : right;
+  }
+
+  static clampInt(value: int, min: int, max: int): int {
+    return BufferInternals.maxInt(min, BufferInternals.minInt(value, max));
+  }
+
   static copyRange(
     source: Uint8Array,
-    start: number,
-    end: number,
+    start: int,
+    end: int,
   ): Uint8Array {
-    const safeStart = start < 0 ? 0 : start;
+    const safeStart = start < 0 ? (0 as int) : start;
     const safeEnd = end < safeStart ? safeStart : end;
     const result = new Uint8Array(safeEnd - safeStart);
     let targetIndex = 0;
@@ -44,8 +56,8 @@ class BufferInternals {
 
   static copyInto(
     source: Uint8Array,
-    sourceStart: number,
-    sourceEnd: number,
+    sourceStart: int,
+    sourceEnd: int,
     target: Uint8Array,
     targetStart: int,
   ): void {
@@ -57,15 +69,15 @@ class BufferInternals {
     }
   }
 
-  static toByteArray(bytes: Uint8Array): number[] {
-    const result: number[] = [];
+  static toByteArray(bytes: Uint8Array): byte[] {
+    const result: byte[] = [];
     for (let index = 0; index < bytes.length; index += 1) {
-      result.push(bytes[index]!);
+      result.push(bytes[index]! as byte);
     }
     return result;
   }
 
-  static toUint8Array(bytes: number[]): Uint8Array {
+  static toUint8Array(bytes: byte[]): Uint8Array {
     const result = new Uint8Array(bytes.length);
     for (let index = 0; index < bytes.length; index += 1) {
       result[index] = bytes[index]!;
@@ -254,7 +266,7 @@ export class Buffer {
       return Buffer.fromBuffer(value);
     }
     if (value instanceof Uint8Array) {
-      return Buffer.fromUint8Array(value);
+      return Buffer.fromUint8Array(value as Uint8Array);
     }
     // number[]
     return Buffer.fromArray(value as number[]);
@@ -334,7 +346,7 @@ export class Buffer {
     for (let i = 0; i < list.length; i += 1) {
       if (offset >= len) break;
       const buf = list[i]!;
-      const copyLen = Math.min(buf.length, len - offset);
+      const copyLen = BufferInternals.minInt(buf.length, (len - offset) as int);
       BufferInternals.copyInto(buf._data, 0, copyLen, result._data, offset);
       offset += copyLen;
     }
@@ -370,14 +382,17 @@ export class Buffer {
     let sStart = sourceStart ?? 0;
     let sEnd = sourceEnd ?? this.length;
 
-    tStart = Math.max(0, Math.min(tStart, target.length));
-    tEnd = Math.max(tStart, Math.min(tEnd, target.length));
-    sStart = Math.max(0, Math.min(sStart, this.length));
-    sEnd = Math.max(sStart, Math.min(sEnd, this.length));
+    tStart = BufferInternals.clampInt(tStart, 0 as int, target.length);
+    tEnd = BufferInternals.maxInt(tStart, BufferInternals.minInt(tEnd, target.length));
+    sStart = BufferInternals.clampInt(sStart, 0 as int, this.length);
+    sEnd = BufferInternals.maxInt(sStart, BufferInternals.minInt(sEnd, this.length));
 
     const sourceLength = sEnd - sStart;
     const targetLength = tEnd - tStart;
-    const minLength = Math.min(sourceLength, targetLength);
+    const minLength = BufferInternals.minInt(
+      sourceLength as int,
+      targetLength as int,
+    );
 
     for (let i = 0; i < minLength; i += 1) {
       const a = this._data[sStart + i]!;
@@ -400,7 +415,7 @@ export class Buffer {
     encoding: string = "utf8",
   ): number {
     let offset = byteOffset;
-    if (offset < 0) offset = Math.max(0, this.length + offset);
+    if (offset < 0) offset = BufferInternals.maxInt(0 as int, (this.length + offset) as int);
     if (offset >= this.length) return -1;
 
     const searchBytes = this.toSearchBytes(value, encoding);
@@ -430,7 +445,7 @@ export class Buffer {
     encoding: string = "utf8",
   ): number {
     let offset = byteOffset ?? this.length - 1;
-    if (offset < 0) offset = Math.max(0, this.length + offset);
+    if (offset < 0) offset = BufferInternals.maxInt(0 as int, (this.length + offset) as int);
     if (offset >= this.length) offset = this.length - 1;
 
     const searchBytes = this.toSearchBytes(value, encoding);
@@ -477,8 +492,8 @@ export class Buffer {
     encoding: string = "utf8",
   ): Buffer {
     let endIndex = end ?? this.length;
-    offset = Math.max(0, Math.min(offset, this.length));
-    endIndex = Math.max(offset, Math.min(endIndex, this.length));
+    offset = BufferInternals.clampInt(offset, 0 as int, this.length);
+    endIndex = BufferInternals.maxInt(offset, BufferInternals.minInt(endIndex, this.length));
 
     if (offset >= endIndex) return this;
 
@@ -514,11 +529,11 @@ export class Buffer {
     let startIndex = start ?? 0;
     let endIndex = end ?? this.length;
 
-    if (startIndex < 0) startIndex = Math.max(0, this.length + startIndex);
-    if (endIndex < 0) endIndex = Math.max(0, this.length + endIndex);
+    if (startIndex < 0) startIndex = BufferInternals.maxInt(0 as int, (this.length + startIndex) as int);
+    if (endIndex < 0) endIndex = BufferInternals.maxInt(0 as int, (this.length + endIndex) as int);
 
-    startIndex = Math.max(0, Math.min(startIndex, this.length));
-    endIndex = Math.max(startIndex, Math.min(endIndex, this.length));
+    startIndex = BufferInternals.clampInt(startIndex, 0 as int, this.length);
+    endIndex = BufferInternals.maxInt(startIndex, BufferInternals.minInt(endIndex, this.length));
 
     const sliceLen = endIndex - startIndex;
     const newData = new Uint8Array(sliceLen);
@@ -545,12 +560,15 @@ export class Buffer {
     let srcStart = sourceStart ?? 0;
     let srcEnd = sourceEnd ?? this.length;
 
-    srcStart = Math.max(0, Math.min(srcStart, this.length));
-    srcEnd = Math.max(srcStart, Math.min(srcEnd, this.length));
+    srcStart = BufferInternals.clampInt(srcStart, 0 as int, this.length);
+    srcEnd = BufferInternals.maxInt(srcStart, BufferInternals.minInt(srcEnd, this.length));
 
     if (targetStart < 0 || targetStart >= target.length) return 0;
 
-    const bytesToCopy = Math.min(srcEnd - srcStart, target.length - targetStart);
+    const bytesToCopy = BufferInternals.minInt(
+      (srcEnd - srcStart) as int,
+      (target.length - targetStart) as int,
+    );
     if (bytesToCopy <= 0) return 0;
 
     BufferInternals.copyInto(
@@ -613,7 +631,7 @@ export class Buffer {
     }
 
     const bytes = stringToBytes(str, encoding);
-    const bytesToWrite = Math.min(bytes.length, maxLength);
+    const bytesToWrite = BufferInternals.minInt(bytes.length, maxLength);
     BufferInternals.copyInto(bytes, 0, bytesToWrite, this._data, offset);
     return bytesToWrite;
   }
@@ -1245,7 +1263,7 @@ export class Buffer {
     const decoded = isBase64Url
       ? base64ToBytes(base64UrlToBase64(b64))
       : base64ToBytes(b64);
-    const bytesToWrite = Math.min(decoded.length, maxLength);
+    const bytesToWrite = BufferInternals.minInt(decoded.length, maxLength);
     BufferInternals.copyInto(decoded, 0, bytesToWrite, this._data, offset);
     return bytesToWrite;
   }

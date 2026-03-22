@@ -6,7 +6,7 @@
  */
 
 import { Math as JSMath } from "@tsonic/js/index.js";
-import type { int } from "@tsonic/core/types.js";
+import type { byte, int } from "@tsonic/core/types.js";
 import { UTF8Encoding } from "@tsonic/dotnet/System.Text.js";
 
 export type BufferEncoding =
@@ -27,7 +27,7 @@ const utf8 = new UTF8Encoding();
 
 const HEX_DIGITS = "0123456789abcdef";
 
-const toUint8Array = (bytes: number[]): Uint8Array => {
+const toUint8Array = (bytes: byte[]): Uint8Array => {
   const result = new Uint8Array(bytes.length);
   for (let index = 0; index < bytes.length; index += 1) {
     result[index] = bytes[index]!;
@@ -35,10 +35,10 @@ const toUint8Array = (bytes: number[]): Uint8Array => {
   return result;
 };
 
-const toByteArray = (bytes: Uint8Array): number[] => {
-  const result: number[] = [];
+const toByteArray = (bytes: Uint8Array): byte[] => {
+  const result: byte[] = [];
   for (let index = 0; index < bytes.length; index += 1) {
-    result.push(bytes[index]!);
+    result.push(bytes[index]! as byte);
   }
   return result;
 };
@@ -50,7 +50,7 @@ const copyRange = (
 ): Uint8Array => {
   const safeStart = start < 0 ? 0 : start;
   const safeEnd = end < safeStart ? safeStart : end;
-  const result = new Uint8Array(safeEnd - safeStart);
+  const result = new Uint8Array((safeEnd - safeStart) as int);
   for (let index = 0; index < result.length; index += 1) {
     result[index] = bytes[safeStart + index]!;
   }
@@ -264,9 +264,9 @@ const BASE64_CHARS =
 export const bytesToBase64 = (bytes: Uint8Array): string => {
   let result = "";
   for (let i = 0; i < bytes.length; i += 3) {
-    const b0 = bytes[i]!;
-    const b1 = i + 1 < bytes.length ? bytes[i + 1]! : 0;
-    const b2 = i + 2 < bytes.length ? bytes[i + 2]! : 0;
+    const b0 = bytes[i]! as byte;
+    const b1 = i + 1 < bytes.length ? (bytes[i + 1]! as byte) : (0 as byte);
+    const b2 = i + 2 < bytes.length ? (bytes[i + 2]! as byte) : (0 as byte);
 
     result += BASE64_CHARS[(b0 >> 2) & 0x3f];
     result += BASE64_CHARS[((b0 << 4) | (b1 >> 4)) & 0x3f];
@@ -276,9 +276,9 @@ export const bytesToBase64 = (bytes: Uint8Array): string => {
   return result;
 };
 
-const BASE64_LOOKUP: Record<string, number> = {};
+const BASE64_LOOKUP: Record<string, int> = {};
 for (let i = 0; i < BASE64_CHARS.length; i += 1) {
-  BASE64_LOOKUP[BASE64_CHARS[i]!] = i;
+  BASE64_LOOKUP[BASE64_CHARS[i]!] = i as int;
 }
 
 export const base64ToBytes = (base64: string): Uint8Array => {
@@ -288,13 +288,13 @@ export const base64ToBytes = (base64: string): Uint8Array => {
   }
   const byteLength = JSMath.floor((stripped.length * 3) / 4);
   const bytes = new Uint8Array(byteLength);
-  let offset = 0;
+  let offset: int = 0 as int;
 
   for (let i = 0; i < stripped.length; i += 4) {
-    const a = BASE64_LOOKUP[stripped[i]!] ?? 0;
-    const b = BASE64_LOOKUP[stripped[i + 1]!] ?? 0;
-    const c = BASE64_LOOKUP[stripped[i + 2]!] ?? 0;
-    const d = BASE64_LOOKUP[stripped[i + 3]!] ?? 0;
+    const a = BASE64_LOOKUP[stripped[i]!] ?? (0 as int);
+    const b = BASE64_LOOKUP[stripped[i + 1]!] ?? (0 as int);
+    const c = BASE64_LOOKUP[stripped[i + 2]!] ?? (0 as int);
+    const d = BASE64_LOOKUP[stripped[i + 3]!] ?? (0 as int);
 
     bytes[offset] = ((a << 2) | (b >> 4)) & 0xff;
     offset += 1;
