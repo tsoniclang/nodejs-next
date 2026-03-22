@@ -1,5 +1,5 @@
 import type { byte, int } from "@tsonic/core/types.js";
-import { Byte, Guid, ReadOnlySpan } from "@tsonic/dotnet/System.js";
+import { Guid, ReadOnlySpan } from "@tsonic/dotnet/System.js";
 import { BigInteger } from "@tsonic/dotnet/System.Numerics.js";
 import {
   AesManaged,
@@ -50,12 +50,12 @@ export const toByteArray = (buffer: Uint8Array): byte[] => {
 
 export const toReadOnlyByteSpan = (
   buffer: Uint8Array | byte[],
-): ReadOnlySpan<Byte> => {
+): ReadOnlySpan<byte> => {
   if (buffer instanceof Uint8Array) {
-    return new ReadOnlySpan(toByteArray(buffer)) as ReadOnlySpan<Byte>;
+    return new ReadOnlySpan<byte>(toByteArray(buffer));
   }
 
-  return new ReadOnlySpan(buffer) as ReadOnlySpan<Byte>;
+  return new ReadOnlySpan<byte>(buffer);
 };
 
 export const fromByteArray = (buffer: byte[]): Uint8Array => {
