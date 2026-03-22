@@ -40,6 +40,12 @@ export class Server extends EventEmitter {
     this._maxConnections = value;
   }
 
+  constructor();
+  constructor(connectionListener: (socket: Socket) => void);
+  constructor(
+    options: ServerOpts,
+    connectionListener?: (socket: Socket) => void
+  );
   constructor(
     optionsOrListener?: ServerOpts | ((socket: Socket) => void),
     connectionListener?: ((socket: Socket) => void)

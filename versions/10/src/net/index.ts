@@ -46,9 +46,15 @@ export function createServer(
   connectionListener?: (socket: Socket) => void
 ): Server {
   if (typeof optionsOrListener === "function") {
-    return new Server(undefined, optionsOrListener);
+    return new Server(optionsOrListener);
   }
-  return new Server(optionsOrListener, connectionListener);
+  if (optionsOrListener !== undefined) {
+    return new Server(optionsOrListener, connectionListener);
+  }
+  if (connectionListener !== undefined) {
+    return new Server(connectionListener);
+  }
+  return new Server();
 }
 
 // ==================== connect / createConnection ====================
