@@ -3,6 +3,7 @@
  *
  * Baseline: nodejs-clr/src/nodejs/dgram/SocketOptions.cs
  */
+import type { int } from "@tsonic/core/types.js";
 
 /** Options for creating a dgram socket. */
 export class SocketOptions {
@@ -19,16 +20,16 @@ export class SocketOptions {
   public ipv6Only: boolean = false;
 
   /** Sets the SO_RCVBUF socket receive buffer size in bytes. */
-  public recvBufferSize: number | undefined = undefined;
+  public recvBufferSize: int | undefined = undefined;
 
   /** Sets the SO_SNDBUF socket send buffer size in bytes. */
-  public sendBufferSize: number | undefined = undefined;
+  public sendBufferSize: int | undefined = undefined;
 }
 
 /** Options for binding a dgram socket. */
 export class BindOptions {
   /** The port to bind to. */
-  public port: number | undefined = undefined;
+  public port: int | undefined = undefined;
 
   /** The address to bind to. */
   public address: string | undefined = undefined;
@@ -37,5 +38,5 @@ export class BindOptions {
   public exclusive: boolean = false;
 
   /** File descriptor (not supported in native). */
-  public fd: number | undefined = undefined;
+  public fd: int | undefined = undefined;
 }

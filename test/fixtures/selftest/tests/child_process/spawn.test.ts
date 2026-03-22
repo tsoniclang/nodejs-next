@@ -2,6 +2,7 @@ import { attributes as A } from "@tsonic/core/lang.js";
 import { Assert, FactAttribute } from "xunit-types/Xunit.js";
 
 import * as child_process from "@tsonic/nodejs/child_process.js";
+import { assertThrows } from "./helpers.ts";
 
 /**
  * Baseline: nodejs-clr/tests/nodejs.Tests/child_process/spawn.tests.cs
@@ -61,7 +62,7 @@ export class ChildProcessSpawnTests {
 
   public spawn_InvalidCommand_ThrowsWithoutHandler(): void {
     // When there's no error handler, spawn throws for invalid commands
-    Assert.Throws(() => {
+    assertThrows(() => {
       child_process.spawn("nonexistent_command_xyz");
     });
   }

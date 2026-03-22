@@ -50,22 +50,20 @@ export class TLSServer extends EventEmitter {
     this._options = options;
 
     if (options !== null) {
-      this._secureContext = createSecureContextFromOptions(
-        new SecureContextOptions()
-      );
-      // Transfer relevant fields
+      const rejectUnauthorized = options.rejectUnauthorized ?? false;
       const ctxOpts = new SecureContextOptions();
       ctxOpts.key = options.key;
       ctxOpts.cert = options.cert;
       ctxOpts.ca = options.ca;
       ctxOpts.passphrase = options.passphrase;
-      ctxOpts.minVersion =
-        options.rejectUnauthorized === true ? "TLSv1.2" : null;
+      ctxOpts.minVersion = rejectUnauthorized ? "TLSv1.2" : null;
       this._secureContext = createSecureContextFromOptions(ctxOpts);
     }
 
     if (listener !== null) {
-      this.on("secureConnection", listener as (...args: unknown[]) => void);
+      this.on("secureConnection", (...args: unknown[]) => {
+        listener(args[0] as TLSSocket);
+      });
     }
 
     // TODO: listen for raw TCP connections and wrap each with TLS

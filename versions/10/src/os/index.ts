@@ -3,24 +3,46 @@
  *
  * Baseline: nodejs-clr/src/nodejs/os/
  */
-export { arch } from "./arch-value.ts";
-export { availableParallelism } from "./available-parallelism.ts";
-export { cpus } from "./cpus-value.ts";
-export type { CpuInfo, CpuTimes } from "./cpus-value.ts";
-export { devNull } from "./dev-null.ts";
-export { endianness } from "./endianness-value.ts";
-export { EOL } from "./eol.ts";
-export { freemem } from "./freemem-value.ts";
-export { homedir } from "./homedir-value.ts";
-export { hostname } from "./hostname-value.ts";
-export { loadavg } from "./loadavg-value.ts";
-export { machine } from "./machine-value.ts";
-export { platform } from "./platform-value.ts";
-export { release } from "./release-value.ts";
-export { tmpdir } from "./tmpdir-value.ts";
-export { totalmem } from "./totalmem-value.ts";
-export { type } from "./type-value.ts";
-export { uptime } from "./uptime-value.ts";
-export { userInfo } from "./user-info.ts";
-export type { UserInfo } from "./user-info.ts";
-export { version } from "./version-value.ts";
+import { arch as archValue } from "./arch-value.ts";
+import { availableParallelism as availableParallelismValue } from "./available-parallelism.ts";
+import { cpus as cpusValue } from "./cpus-value.ts";
+import type { CpuInfo, CpuTimes } from "./cpus-value.ts";
+import { devNull as devNullValue } from "./dev-null.ts";
+import { endianness as endiannessValue } from "./endianness-value.ts";
+import { EOL as eolValue } from "./eol.ts";
+import { freemem as freememValue } from "./freemem-value.ts";
+import { homedir as homedirValue } from "./homedir-value.ts";
+import { hostname as hostnameValue } from "./hostname-value.ts";
+import { loadavg as loadavgValue } from "./loadavg-value.ts";
+import { machine as machineValue } from "./machine-value.ts";
+import { platform as platformValue } from "./platform-value.ts";
+import { release as releaseValue } from "./release-value.ts";
+import { tmpdir as tmpdirValue } from "./tmpdir-value.ts";
+import { totalmem as totalmemValue } from "./totalmem-value.ts";
+import { type as typeValue } from "./type-value.ts";
+import { uptime as uptimeValue } from "./uptime-value.ts";
+import { userInfo as userInfoValue } from "./user-info.ts";
+import type { UserInfo } from "./user-info.ts";
+import { version as versionValue } from "./version-value.ts";
+
+export type { CpuInfo, CpuTimes, UserInfo };
+
+export const arch = (): string => archValue();
+export const availableParallelism = (): number => availableParallelismValue();
+export const cpus = (): CpuInfo[] => cpusValue();
+export const devNull = devNullValue;
+export const endianness = (): string => endiannessValue();
+export const EOL = eolValue;
+export const freemem = (): number => freememValue();
+export const homedir = (): string => homedirValue();
+export const hostname = (): string => hostnameValue();
+export const loadavg = (): number[] => loadavgValue();
+export const machine = (): string => machineValue();
+export const platform = (): string => platformValue();
+export const release = (): string => releaseValue();
+export const tmpdir = (): string => tmpdirValue();
+export const totalmem = (): number => totalmemValue();
+export const type = (): string => typeValue();
+export const uptime = (): number => uptimeValue();
+export const userInfo = (): UserInfo => userInfoValue();
+export const version = (): string => versionValue();

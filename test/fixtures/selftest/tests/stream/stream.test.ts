@@ -11,6 +11,7 @@ import {
   PassThrough,
   Stream,
 } from "@tsonic/nodejs/stream.js";
+import { assertThrows } from "./helpers.ts";
 
 export class StreamTests {
   // ------------------------------------------------------------------ Readable
@@ -193,7 +194,7 @@ export class StreamTests {
 
     stream.end();
 
-    Assert.Throws(() => {
+    assertThrows(() => {
       stream.write("data");
     });
   }

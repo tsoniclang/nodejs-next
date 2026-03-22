@@ -3,6 +3,7 @@ import { Assert, FactAttribute } from "xunit-types/Xunit.js";
 
 import { ExecOptions } from "@tsonic/nodejs/child_process.js";
 import * as child_process from "@tsonic/nodejs/child_process.js";
+import { assertThrows } from "./helpers.ts";
 
 /**
  * Baseline: nodejs-clr/tests/nodejs.Tests/child_process/execSync.tests.cs
@@ -48,7 +49,7 @@ export class ChildProcessExecSyncTests {
   public execSync_NonZeroExit_ThrowsException(): void {
     const command = "exit 1";
 
-    Assert.Throws(() => {
+    assertThrows(() => {
       child_process.execSync(command);
     });
   }

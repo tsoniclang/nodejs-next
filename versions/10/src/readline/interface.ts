@@ -35,7 +35,7 @@ export class Interface extends EventEmitter {
   }
 
   /** Cursor position in current line. */
-  public get cursor(): number {
+  public get cursor(): int {
     return this._cursor;
   }
 
@@ -67,7 +67,7 @@ export class Interface extends EventEmitter {
         }
       };
 
-      const endListener = (): void => {
+      const endListener = (..._args: unknown[]): void => {
         if (!this._closed) {
           this.close();
         }

@@ -4,6 +4,8 @@
  *
  * Baseline: nodejs-clr/src/nodejs/net/net.cs
  */
+import type { int } from "@tsonic/core/types.js";
+
 export { BlockList } from "./block-list.ts";
 export { SocketAddress } from "./block-list.ts";
 export { Socket } from "./socket.ts";
@@ -25,7 +27,7 @@ import type { ServerOpts, TcpSocketConnectOpts } from "./options.ts";
 // ==================== Module-level state ====================
 
 let defaultAutoSelectFamily: boolean = false;
-let defaultAutoSelectFamilyAttemptTimeout: number = 250;
+let defaultAutoSelectFamilyAttemptTimeout: int = 250;
 
 // ==================== createServer ====================
 
@@ -44,7 +46,7 @@ export function createServer(
   connectionListener?: (socket: Socket) => void
 ): Server {
   if (typeof optionsOrListener === "function") {
-    return new Server(optionsOrListener);
+    return new Server(undefined, optionsOrListener);
   }
   return new Server(optionsOrListener, connectionListener);
 }
@@ -55,7 +57,7 @@ export function createServer(
  * Creates a new socket connection.
  */
 export function connect(
-  port: number,
+  port: int,
   host?: string,
   connectionListener?: () => void
 ): Socket;
@@ -68,11 +70,18 @@ export function connect(
   connectionListener?: () => void
 ): Socket;
 export function connect(
-  portOrOptionsOrPath: number | TcpSocketConnectOpts | string,
+  portOrOptionsOrPath: int | TcpSocketConnectOpts | string,
   hostOrListener?: string | (() => void),
   connectionListener?: () => void
 ): Socket {
   const socket = new Socket();
+
+  if (typeof portOrOptionsOrPath === "string") {
+    const listener =
+      typeof hostOrListener === "function" ? hostOrListener : undefined;
+    socket.connect(portOrOptionsOrPath, listener);
+    return socket;
+  }
 
   if (typeof portOrOptionsOrPath === "number") {
     const host =
@@ -85,14 +94,6 @@ export function connect(
     return socket;
   }
 
-  if (typeof portOrOptionsOrPath === "string") {
-    const listener =
-      typeof hostOrListener === "function" ? hostOrListener : undefined;
-    socket.connect(portOrOptionsOrPath, listener);
-    return socket;
-  }
-
-  // TcpSocketConnectOpts
   const listener =
     typeof hostOrListener === "function" ? hostOrListener : undefined;
   socket.connect(portOrOptionsOrPath, listener);
@@ -103,7 +104,7 @@ export function connect(
  * Alias for connect().
  */
 export function createConnection(
-  port: number,
+  port: int,
   host?: string,
   connectionListener?: () => void
 ): Socket;
@@ -116,15 +117,27 @@ export function createConnection(
   connectionListener?: () => void
 ): Socket;
 export function createConnection(
-  portOrOptionsOrPath: number | TcpSocketConnectOpts | string,
+  portOrOptionsOrPath: int | TcpSocketConnectOpts | string,
   hostOrListener?: string | (() => void),
   connectionListener?: () => void
 ): Socket {
-  return connect(
-    portOrOptionsOrPath as number,
-    hostOrListener as string,
-    connectionListener
-  );
+  if (typeof portOrOptionsOrPath === "string") {
+    const listener =
+      typeof hostOrListener === "function" ? hostOrListener : connectionListener;
+    return connect(portOrOptionsOrPath, listener);
+  }
+
+  if (typeof portOrOptionsOrPath === "number") {
+    const host =
+      typeof hostOrListener === "string" ? hostOrListener : undefined;
+    const listener =
+      typeof hostOrListener === "function" ? hostOrListener : connectionListener;
+    return connect(portOrOptionsOrPath, host, listener);
+  }
+
+  const listener =
+    typeof hostOrListener === "function" ? hostOrListener : connectionListener;
+  return connect(portOrOptionsOrPath, listener);
 }
 
 // ==================== IP Utilities ====================
@@ -139,7 +152,7 @@ const IPV6_REGEX =
  * Tests if input is an IP address. Returns 0 for invalid strings,
  * returns 4 for IP version 4 addresses, and returns 6 for IP version 6 addresses.
  */
-export const isIP = (input: string): number => {
+export const isIP = (input: string): int => {
   if (input === undefined || input === null || input.length === 0) {
     return 0;
   }
@@ -188,7 +201,7 @@ export const setDefaultAutoSelectFamily = (value: boolean): void => {
 /**
  * Gets the default value of autoSelectFamilyAttemptTimeout option of socket.connect(options).
  */
-export const getDefaultAutoSelectFamilyAttemptTimeout = (): number => {
+export const getDefaultAutoSelectFamilyAttemptTimeout = (): int => {
   return defaultAutoSelectFamilyAttemptTimeout;
 };
 
@@ -196,7 +209,7 @@ export const getDefaultAutoSelectFamilyAttemptTimeout = (): number => {
  * Sets the default value of autoSelectFamilyAttemptTimeout option of socket.connect(options).
  */
 export const setDefaultAutoSelectFamilyAttemptTimeout = (
-  value: number
+  value: int
 ): void => {
   defaultAutoSelectFamilyAttemptTimeout = value;
 };

@@ -13,7 +13,7 @@ type WriteRequest = {
 };
 
 export class Writable extends Stream {
-  private readonly _buffer: WriteRequest[] = [];
+  private _buffer: WriteRequest[] = [];
   private _ended = false;
   private _writing = false;
   private _corked = false;
@@ -96,7 +96,9 @@ export class Writable extends Stream {
     }
 
     if (callback !== undefined) {
-      this.once("finish", callback);
+      this.once("finish", (..._args: unknown[]) => {
+        callback();
+      });
     }
 
     this._ended = true;

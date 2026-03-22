@@ -3,6 +3,7 @@ import { Assert, FactAttribute } from "xunit-types/Xunit.js";
 
 import { ExecOptions } from "@tsonic/nodejs/child_process.js";
 import * as child_process from "@tsonic/nodejs/child_process.js";
+import { assertThrows } from "./helpers.ts";
 
 /**
  * Baseline: nodejs-clr/tests/nodejs.Tests/child_process/ExecOptions.tests.cs
@@ -26,7 +27,7 @@ export class ChildProcessExecOptionsTests {
     options.timeout = 100; // 100ms timeout
 
     // TODO: substrate-dependent -- timeout handling requires native process spawning
-    Assert.Throws(() => {
+    assertThrows(() => {
       child_process.execSync(command, options);
     });
   }

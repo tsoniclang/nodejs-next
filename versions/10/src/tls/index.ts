@@ -86,7 +86,7 @@ export const createServer = (
   secureConnectionListener?: (socket: TLSSocket) => void
 ): TLSServer => {
   if (typeof optionsOrListener === "function") {
-    return new TLSServer(optionsOrListener, null);
+    return new TLSServer(null, optionsOrListener);
   }
   return new TLSServer(
     optionsOrListener ?? null,
@@ -128,13 +128,14 @@ export const connect = (
         ? optionsOrCallback
         : secureConnectListener ?? null;
 
+  const rejectUnauthorized = options.rejectUnauthorized ?? true;
+
   const ctxOpts = new SecureContextOptions();
   ctxOpts.ca = options.ca;
   ctxOpts.cert = options.cert;
   ctxOpts.key = options.key;
   ctxOpts.passphrase = options.passphrase;
-  ctxOpts.minVersion =
-    options.rejectUnauthorized !== false ? "TLSv1.2" : null;
+  ctxOpts.minVersion = rejectUnauthorized ? "TLSv1.2" : null;
 
   const secureContext = createSecureContext(ctxOpts);
 
@@ -145,7 +146,7 @@ export const connect = (
   socketOpts.cert = options.cert;
   socketOpts.key = options.key;
   socketOpts.passphrase = options.passphrase;
-  socketOpts.rejectUnauthorized = options.rejectUnauthorized;
+  socketOpts.rejectUnauthorized = rejectUnauthorized;
   socketOpts.secureContext = secureContext;
 
   // TODO: create a real transport socket from the substrate net module
@@ -154,7 +155,9 @@ export const connect = (
   const tlsSocket = new TLSSocket(transportSocket, socketOpts);
 
   if (listener !== null) {
-    tlsSocket.once("secureConnect", listener as (...args: unknown[]) => void);
+    tlsSocket.once("secureConnect", (..._args: unknown[]) => {
+      listener();
+    });
   }
 
   // TODO: initiate TCP connection then TLS handshake via substrate

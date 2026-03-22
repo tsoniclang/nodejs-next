@@ -8,7 +8,7 @@ import type { int } from "@tsonic/core/types.js";
 import { Stream } from "./stream.ts";
 
 export class Readable extends Stream {
-  private readonly _buffer: unknown[] = [];
+  private _buffer: unknown[] = [];
   private _ended = false;
   private _flowing = false;
   private _encoding: string | undefined;

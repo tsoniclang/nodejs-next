@@ -10,18 +10,19 @@
  */
 import type { BrotliOptions } from "./brotli-options.ts";
 import type { ZlibOptions } from "./zlib-options.ts";
+import type { int } from "@tsonic/core/types.js";
 import { stringToBytes } from "../buffer/buffer-encoding.ts";
 
 // ---------------------------------------------------------------------------
 // CRC-32 table (computed once, standard IEEE polynomial 0xEDB88320)
 // ---------------------------------------------------------------------------
 
-const buildCrc32Table = (): Map<string, number> => {
-  const table = new Map<string, number>();
-  const polynomial = 0xedb88320;
-  for (let i = 0; i < 256; i += 1) {
-    let crc = i;
-    for (let j = 0; j < 8; j += 1) {
+const buildCrc32Table = (): Map<string, int> => {
+  const table = new Map<string, int>();
+  const polynomial: int = -306674912;
+  for (let i: int = 0; i < 256; i += 1) {
+    let crc: int = i;
+    for (let j: int = 0; j < 8; j += 1) {
       crc = (crc & 1) === 1 ? (crc >>> 1) ^ polynomial : crc >>> 1;
     }
     table.set(String(i), crc >>> 0);
@@ -29,7 +30,7 @@ const buildCrc32Table = (): Map<string, number> => {
   return table;
 };
 
-const CRC32_TABLE: Map<string, number> = buildCrc32Table();
+const CRC32_TABLE: Map<string, int> = buildCrc32Table();
 
 // ---------------------------------------------------------------------------
 // crc32
@@ -42,12 +43,12 @@ const CRC32_TABLE: Map<string, number> = buildCrc32Table();
  * @param value Optional initial CRC value (for incremental computation).
  * @returns The CRC32 checksum as an unsigned 32-bit integer.
  */
-export const crc32 = (data: Uint8Array, value: number = 0): number => {
+export const crc32 = (data: Uint8Array, value: int = 0): int => {
   if (data === null || data === undefined) {
     throw new Error("data must not be null");
   }
 
-  const initialCrc = value === 0 ? 0xffffffff : ~value;
+  const initialCrc: int = value === 0 ? -1 : ~value;
   const result = computeCrc32(data, initialCrc >>> 0);
   return result >>> 0;
 };
@@ -59,7 +60,7 @@ export const crc32 = (data: Uint8Array, value: number = 0): number => {
  * @param value Optional initial CRC value.
  * @returns The CRC32 checksum as an unsigned 32-bit integer.
  */
-export const crc32String = (data: string, value: number = 0): number => {
+export const crc32String = (data: string, value: int = 0): int => {
   if (data === null || data === undefined) {
     throw new Error("data must not be null");
   }
@@ -68,11 +69,12 @@ export const crc32String = (data: string, value: number = 0): number => {
   return crc32(bytes, value);
 };
 
-const computeCrc32 = (data: Uint8Array, crc: number): number => {
-  let current = crc;
-  for (let i = 0; i < data.length; i += 1) {
+const computeCrc32 = (data: Uint8Array, crc: int): int => {
+  let current: int = crc;
+  for (let i: int = 0; i < data.length; i += 1) {
     const tableIndex = String((current ^ data[i]!) & 0xff);
-    current = (current >>> 8) ^ (CRC32_TABLE.get(tableIndex) ?? 0);
+    const tableValue: int = CRC32_TABLE.get(tableIndex) ?? 0;
+    current = (current >>> 8) ^ tableValue;
   }
   return ~current;
 };

@@ -46,7 +46,8 @@ export const pipeline = (...args: unknown[]): void => {
       const dest = streamList[i + 1]!;
 
       // Set up error handling
-      source.on("error", (err: unknown) => {
+      source.on("error", (...errorArgs: unknown[]) => {
+        const err = errorArgs[0];
         // Destroy remaining streams
         for (let j = i; j < streamList.length; j += 1) {
           streamList[j]!.destroy(
@@ -66,17 +67,18 @@ export const pipeline = (...args: unknown[]): void => {
 
     // Handle final stream completion
     const lastStream = streamList[streamList.length - 1]!;
-    lastStream.on("finish", () => {
+    lastStream.on("finish", (..._args: unknown[]) => {
       if (callback !== undefined) {
         callback(undefined);
       }
     });
-    lastStream.on("end", () => {
+    lastStream.on("end", (..._args: unknown[]) => {
       if (callback !== undefined) {
         callback(undefined);
       }
     });
-    lastStream.on("error", (err: unknown) => {
+    lastStream.on("error", (...errorArgs: unknown[]) => {
+      const err = errorArgs[0];
       if (callback !== undefined) {
         callback(err instanceof Error ? err : new Error(String(err)));
       }
@@ -110,7 +112,7 @@ export const finished = (
 ): void => {
   let called = false;
 
-  const onFinished = (error: Error | undefined): void => {
+  function onFinished(error: Error | undefined): void {
     if (called) {
       return;
     }
@@ -122,25 +124,29 @@ export const finished = (
     stream.removeListener("close", onClose);
 
     callback(error);
-  };
+  }
 
-  const onFinish = (): void => {
+  function onFinish(..._args: unknown[]): void {
     onFinished(undefined);
-  };
-  const onEnd = (): void => {
+  }
+
+  function onEnd(..._args: unknown[]): void {
     onFinished(undefined);
-  };
-  const onError = (err: unknown): void => {
+  }
+
+  function onError(...args: unknown[]): void {
+    const err = args[0];
     onFinished(err instanceof Error ? err : new Error(String(err)));
-  };
-  const onClose = (...args: unknown[]): void => {
+  }
+
+  function onClose(...args: unknown[]): void {
     const hadError = args.length > 0 && args[0] === true;
     onFinished(
       hadError
         ? new Error("Stream closed with error")
         : undefined,
     );
-  };
+  }
 
   stream.on("finish", onFinish);
   stream.on("end", onEnd);
