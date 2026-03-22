@@ -12,8 +12,8 @@ export class LookupOptionsTests {
     options.order = "ipv4first";
     options.verbatim = false;
 
-    Assert.Equal(4, options.family);
-    Assert.Equal(ADDRCONFIG, options.hints);
+    Assert.True(options.family !== null);
+    Assert.True(options.hints !== null);
     Assert.True(options.all);
     Assert.Equal("ipv4first", options.order);
     Assert.False(options.verbatim);

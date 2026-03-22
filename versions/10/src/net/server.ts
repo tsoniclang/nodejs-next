@@ -110,8 +110,9 @@ export class Server extends EventEmitter {
           : undefined;
 
       if (options.port !== undefined) {
+        const requestedPort = options.port;
         return this.listenInternal(
-          options.port,
+          requestedPort,
           options.host,
           options.backlog ?? 511,
           listener

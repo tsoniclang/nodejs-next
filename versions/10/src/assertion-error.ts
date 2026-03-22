@@ -55,7 +55,6 @@ export class AssertionError extends Error {
     operator: string = ""
   ) {
     super(message ?? generateMessage(actual, expected, operator));
-    this.name = "AssertionError";
     this.actual = actual as unknown;
     this.expected = expected as unknown;
     this.operator = operator;

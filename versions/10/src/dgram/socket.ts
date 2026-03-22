@@ -68,7 +68,8 @@ export class DgramSocket extends EventEmitter {
   /**
    * Causes the socket to listen for datagram messages on a named port and optional address.
    */
-  bind(port?: int, address?: string, callback?: () => void): DgramSocket;
+  bind(): DgramSocket;
+  bind(port: int, address?: string, callback?: () => void): DgramSocket;
   bind(port: int, callback: () => void): DgramSocket;
   bind(callback: () => void): DgramSocket;
   bind(options: BindOptions, callback?: () => void): DgramSocket;
@@ -85,7 +86,9 @@ export class DgramSocket extends EventEmitter {
     let address: string | undefined = undefined;
     let cb: (() => void) | undefined = undefined;
 
-    if (typeof portOrCallbackOrOptions === "function") {
+    if (portOrCallbackOrOptions === undefined) {
+      cb = typeof addressOrCallback === "function" ? addressOrCallback : callback;
+    } else if (typeof portOrCallbackOrOptions === "function") {
       // bind(callback)
       cb = portOrCallbackOrOptions;
     } else if (
@@ -105,7 +108,7 @@ export class DgramSocket extends EventEmitter {
       cb = typeof addressOrCallback === "function" ? addressOrCallback : callback;
     } else {
       // bind(port?, address?, callback?)
-      port = (portOrCallbackOrOptions as int | undefined) ?? 0;
+      port = portOrCallbackOrOptions;
 
       if (typeof addressOrCallback === "function") {
         cb = addressOrCallback;
@@ -239,27 +242,20 @@ export class DgramSocket extends EventEmitter {
   /**
    * Broadcasts a datagram on the socket.
    */
-  send(
-    msg: Uint8Array | string,
-    port?: int,
-    address?: string,
-    callback?: (error: Error | null, bytes: number) => void,
-  ): void;
+  send(msg: Uint8Array | string, callback: (error: Error | null, bytes: number) => void): void;
+  send(msg: Uint8Array | string, port: int, callback: (error: Error | null, bytes: number) => void): void;
   send(
     msg: Uint8Array | string,
     port: int,
-    callback: (error: Error | null, bytes: number) => void,
+    address: string,
+    callback?: (error: Error | null, bytes: number) => void,
   ): void;
-  send(
-    msg: Uint8Array | string,
-    callback: (error: Error | null, bytes: number) => void,
-  ): void;
+  send(msg: Uint8Array, offset: int, length: int, callback?: (error: Error | null, bytes: number) => void): void;
   send(
     msg: Uint8Array,
     offset: int,
     length: int,
-    port?: int,
-    address?: string,
+    port: int,
     callback?: (error: Error | null, bytes: number) => void,
   ): void;
   send(
@@ -267,13 +263,8 @@ export class DgramSocket extends EventEmitter {
     offset: int,
     length: int,
     port: int,
-    callback: (error: Error | null, bytes: number) => void,
-  ): void;
-  send(
-    msg: Uint8Array,
-    offset: int,
-    length: int,
-    callback: (error: Error | null, bytes: number) => void,
+    address: string,
+    callback?: (error: Error | null, bytes: number) => void,
   ): void;
   send(
     msg: Uint8Array | string,

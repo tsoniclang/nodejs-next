@@ -77,7 +77,7 @@ const observers: PerformanceObserver[] = [];
  */
 export class PerformanceObserver {
   private readonly callback: PerformanceObserverCallback;
-  private entryTypes: Set<string> = new Set();
+  private entryTypes: string[] = [];
   private observing = false;
 
   public constructor(callback: PerformanceObserverCallback) {
@@ -100,7 +100,7 @@ export class PerformanceObserver {
       throw new Error("entryTypes must be provided and non-empty");
     }
 
-    this.entryTypes = new Set(options.entryTypes);
+    this.entryTypes = [...options.entryTypes];
     this.observing = true;
 
     if (!observers.includes(this)) {
@@ -129,7 +129,7 @@ export class PerformanceObserver {
   static notifyObservers(entry: PerformanceEntry): void {
     const toNotify = observers.filter(
       (observer) =>
-        observer.observing && observer.entryTypes.has(entry.entryType),
+        observer.observing && observer.entryTypes.includes(entry.entryType),
     );
 
     for (const observer of toNotify) {

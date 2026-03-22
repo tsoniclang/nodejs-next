@@ -21,8 +21,8 @@ export class ECDH {
   /**
    * Generates private and public EC Diffie-Hellman key values.
    */
-  public generateKeys(encoding?: string, _format?: string): string;
-  public generateKeys(): Uint8Array;
+  public generateKeys(encoding?: undefined, _format?: string): Uint8Array;
+  public generateKeys(encoding: string, _format?: string): string;
   public generateKeys(encoding?: string, _format?: string): string | Uint8Array {
     // TODO: actual EC key generation
     this._publicKey = new Uint8Array(65);
@@ -44,8 +44,8 @@ export class ECDH {
     inputEncoding?: string,
     outputEncoding?: string
   ): string;
+  public computeSecret(otherPublicKey: Uint8Array, outputEncoding?: undefined): Uint8Array;
   public computeSecret(otherPublicKey: Uint8Array, outputEncoding: string): string;
-  public computeSecret(otherPublicKey: Uint8Array): Uint8Array;
   public computeSecret(
     otherPublicKey: string | Uint8Array,
     _inputOrOutputEncoding?: string,
@@ -63,8 +63,8 @@ export class ECDH {
   /**
    * Returns the EC Diffie-Hellman public key.
    */
-  public getPublicKey(encoding?: string, _format?: string): string;
-  public getPublicKey(): Uint8Array;
+  public getPublicKey(encoding?: undefined, _format?: string): Uint8Array;
+  public getPublicKey(encoding: string, _format?: string): string;
   public getPublicKey(encoding?: string, _format?: string): string | Uint8Array {
     if (this._publicKey === null) {
       throw new Error("Must call generateKeys() first");
@@ -81,8 +81,8 @@ export class ECDH {
   /**
    * Returns the EC Diffie-Hellman private key.
    */
+  public getPrivateKey(encoding?: undefined): Uint8Array;
   public getPrivateKey(encoding: string): string;
-  public getPrivateKey(): Uint8Array;
   public getPrivateKey(encoding?: string): string | Uint8Array {
     if (this._privateKey === null) {
       throw new Error("Must call generateKeys() first");

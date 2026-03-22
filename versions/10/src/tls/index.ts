@@ -86,12 +86,12 @@ export const createServer = (
   secureConnectionListener?: (socket: TLSSocket) => void
 ): TLSServer => {
   if (typeof optionsOrListener === "function") {
-    return new TLSServer(null, optionsOrListener);
+    return new TLSServer(optionsOrListener);
   }
-  return new TLSServer(
-    optionsOrListener ?? null,
-    secureConnectionListener ?? null
-  );
+  if (optionsOrListener !== undefined) {
+    return new TLSServer(optionsOrListener, secureConnectionListener ?? null);
+  }
+  return new TLSServer();
 };
 
 /**

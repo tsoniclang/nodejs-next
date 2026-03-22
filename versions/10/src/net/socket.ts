@@ -240,13 +240,6 @@ export class Socket extends EventEmitter {
   /**
    * Half-closes the socket.
    */
-  public end(callback?: () => void): Socket;
-  public end(data: Uint8Array, callback?: () => void): Socket;
-  public end(
-    data: string,
-    encoding?: string,
-    callback?: () => void
-  ): Socket;
   public end(
     dataOrCallback?: Uint8Array | string | (() => void),
     encodingOrCallback?: string | (() => void),

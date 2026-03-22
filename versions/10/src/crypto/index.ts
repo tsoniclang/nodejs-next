@@ -24,6 +24,20 @@ import { DSAPublicKeyObject, DSAPrivateKeyObject } from "./dsakey-object.ts";
 import { EdDSAPublicKeyObject, EdDSAPrivateKeyObject } from "./ed-dsakey-object.ts";
 import { getGroup, isValidGroup } from "./modpgroups.ts";
 
+const createDiffieHellmanFromLength = (
+  primeLength: number,
+  generatorNumber: number
+): DiffieHellman => {
+  return new DiffieHellman(primeLength, generatorNumber);
+};
+
+const createDiffieHellmanFromBytes = (
+  primeBytes: Uint8Array,
+  generatorBytes: Uint8Array
+): DiffieHellman => {
+  return new DiffieHellman(primeBytes, generatorBytes);
+};
+
 // ── Hash ───────────────────────────────────────────────────────────────────
 
 /**
@@ -395,25 +409,35 @@ export const createDiffieHellman = (
   generatorEncoding?: string
 ): DiffieHellman => {
   if (typeof primeOrLength === "number") {
-    const gen =
-      typeof generatorOrEncoding === "number" ? generatorOrEncoding : 2;
-    return new DiffieHellman(primeOrLength, gen);
+    if (typeof generatorOrEncoding === "number") {
+      return createDiffieHellmanFromLength(
+        primeOrLength,
+        generatorOrEncoding
+      );
+    }
+    return createDiffieHellmanFromLength(primeOrLength, 2);
   }
 
   if (primeOrLength instanceof Uint8Array) {
+    const primeBytes: Uint8Array = primeOrLength;
     if (generatorOrEncoding instanceof Uint8Array) {
-      return new DiffieHellman(primeOrLength, generatorOrEncoding);
+      const generatorBytes: Uint8Array = generatorOrEncoding;
+      return createDiffieHellmanFromBytes(primeBytes, generatorBytes);
     }
-    const gen =
-      typeof generatorOrEncoding === "number" ? generatorOrEncoding : 2;
-    return new DiffieHellman(primeOrLength, new Uint8Array([gen]));
+    if (typeof generatorOrEncoding === "number") {
+      return createDiffieHellmanFromBytes(
+        primeBytes,
+        new Uint8Array([generatorOrEncoding])
+      );
+    }
+    return createDiffieHellmanFromBytes(primeBytes, new Uint8Array([2]));
   }
 
   // String prime with encoding
   // TODO: decode string prime
   void generatorOrEncodingStr;
   void generatorEncoding;
-  return new DiffieHellman(new Uint8Array(0), new Uint8Array([2]));
+  return createDiffieHellmanFromBytes(new Uint8Array(0), new Uint8Array([2]));
 };
 
 /**

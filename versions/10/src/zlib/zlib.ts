@@ -10,27 +10,91 @@
  */
 import type { BrotliOptions } from "./brotli-options.ts";
 import type { ZlibOptions } from "./zlib-options.ts";
-import type { int } from "@tsonic/core/types.js";
+import type { byte, int } from "@tsonic/core/types.js";
+import {
+  BrotliStream,
+  CompressionLevel,
+  CompressionMode,
+  DeflateStream,
+  GZipStream,
+} from "@tsonic/dotnet/System.IO.Compression.js";
+import { MemoryStream } from "@tsonic/dotnet/System.IO.js";
 import { stringToBytes } from "../buffer/buffer-encoding.ts";
 
 // ---------------------------------------------------------------------------
 // CRC-32 table (computed once, standard IEEE polynomial 0xEDB88320)
 // ---------------------------------------------------------------------------
 
-const buildCrc32Table = (): Map<string, int> => {
-  const table = new Map<string, int>();
-  const polynomial: int = -306674912;
-  for (let i: int = 0; i < 256; i += 1) {
-    let crc: int = i;
-    for (let j: int = 0; j < 8; j += 1) {
+const buildCrc32Table = (): number[] => {
+  const table: number[] = new Array<number>(256);
+  const polynomial = 0xedb88320;
+  for (let i = 0; i < 256; i += 1) {
+    let crc = i;
+    for (let j = 0; j < 8; j += 1) {
       crc = (crc & 1) === 1 ? (crc >>> 1) ^ polynomial : crc >>> 1;
     }
-    table.set(String(i), crc >>> 0);
+    table[i] = crc < 0 ? crc + 4294967296 : crc;
   }
   return table;
 };
 
-const CRC32_TABLE: Map<string, int> = buildCrc32Table();
+const CRC32_TABLE: number[] = buildCrc32Table();
+
+const toInt = (value: number): int => {
+  if (
+    Number.isInteger(value) &&
+    value >= -2147483648 &&
+    value <= 2147483647
+  ) {
+    return value as int;
+  }
+
+  throw new RangeError("Expected Int32-compatible numeric value");
+};
+
+const toByteArray = (buffer: Uint8Array): byte[] => {
+  const result: byte[] = [];
+  for (let index = 0; index < buffer.length; index += 1) {
+    result.push(buffer[index]! as byte);
+  }
+  return result;
+};
+
+const fromByteArray = (buffer: byte[]): Uint8Array => {
+  const result = new Uint8Array(buffer.length);
+  for (let index = 0; index < buffer.length; index += 1) {
+    result[index] = buffer[index]!;
+  }
+  return result;
+};
+
+const toCompressionLevel = (level?: number): CompressionLevel => {
+  if (level === null || level === undefined) {
+    return CompressionLevel.Optimal;
+  }
+  if (level === 0) {
+    return CompressionLevel.NoCompression;
+  }
+  if (level <= 1) {
+    return CompressionLevel.Fastest;
+  }
+  if (level >= 9) {
+    return CompressionLevel.SmallestSize;
+  }
+  return CompressionLevel.Optimal;
+};
+
+const normalizeUnsigned32 = (value: number): number => {
+  if (value < 0) {
+    return value + 4294967296.0;
+  }
+  return value;
+};
+
+const invertUnsigned32 = (value: number): number => {
+  const normalized = normalizeUnsigned32(value);
+  return normalizeUnsigned32(4294967295.0 - normalized);
+};
 
 // ---------------------------------------------------------------------------
 // crc32
@@ -43,14 +107,14 @@ const CRC32_TABLE: Map<string, int> = buildCrc32Table();
  * @param value Optional initial CRC value (for incremental computation).
  * @returns The CRC32 checksum as an unsigned 32-bit integer.
  */
-export const crc32 = (data: Uint8Array, value: int = 0): int => {
+export const crc32 = (data: Uint8Array, value: number = 0): number => {
   if (data === null || data === undefined) {
     throw new Error("data must not be null");
   }
 
-  const initialCrc: int = value === 0 ? -1 : ~value;
-  const result = computeCrc32(data, initialCrc >>> 0);
-  return result >>> 0;
+  const initialCrc = value === 0 ? 4294967295.0 : invertUnsigned32(value);
+  const result = computeCrc32(data, normalizeUnsigned32(initialCrc));
+  return normalizeUnsigned32(result);
 };
 
 /**
@@ -60,7 +124,7 @@ export const crc32 = (data: Uint8Array, value: int = 0): int => {
  * @param value Optional initial CRC value.
  * @returns The CRC32 checksum as an unsigned 32-bit integer.
  */
-export const crc32String = (data: string, value: int = 0): int => {
+export const crc32String = (data: string, value: number = 0): number => {
   if (data === null || data === undefined) {
     throw new Error("data must not be null");
   }
@@ -69,14 +133,14 @@ export const crc32String = (data: string, value: int = 0): int => {
   return crc32(bytes, value);
 };
 
-const computeCrc32 = (data: Uint8Array, crc: int): int => {
-  let current: int = crc;
-  for (let i: int = 0; i < data.length; i += 1) {
-    const tableIndex = String((current ^ data[i]!) & 0xff);
-    const tableValue: int = CRC32_TABLE.get(tableIndex) ?? 0;
+const computeCrc32 = (data: Uint8Array, crc: number): number => {
+  let current = crc;
+  for (let i = 0; i < data.length; i += 1) {
+    const tableIndex = toInt((current ^ data[i]!) & 0xff);
+    const tableValue = CRC32_TABLE[tableIndex] ?? 0;
     current = (current >>> 8) ^ tableValue;
   }
-  return ~current;
+  return invertUnsigned32(current);
 };
 
 // ---------------------------------------------------------------------------
@@ -92,17 +156,19 @@ const computeCrc32 = (data: Uint8Array, crc: int): int => {
  */
 export const gzipSync = (
   buffer: Uint8Array,
-  _options?: ZlibOptions,
+  options?: ZlibOptions,
 ): Uint8Array => {
   if (buffer === null || buffer === undefined) {
     throw new Error("buffer must not be null");
   }
 
-  // TODO: Implement native gzip compression.
-  // The CLR baseline uses System.IO.Compression.GZipStream.
-  // Native implementation should use platform zlib bindings or
-  // CompressionStream('gzip') in async form.
-  throw new Error("gzipSync: not yet implemented (requires native zlib)");
+  const output = new MemoryStream();
+  const level = options !== undefined ? options.level : undefined;
+  const stream = new GZipStream(output, toCompressionLevel(level), true);
+  const inputBytes = toByteArray(buffer);
+  stream.Write(inputBytes, 0 as int, toInt(inputBytes.length));
+  stream.Dispose();
+  return fromByteArray(output.ToArray());
 };
 
 /**
@@ -120,9 +186,12 @@ export const gunzipSync = (
     throw new Error("buffer must not be null");
   }
 
-  // TODO: Implement native gzip decompression.
-  // The CLR baseline uses System.IO.Compression.GZipStream in Decompress mode.
-  throw new Error("gunzipSync: not yet implemented (requires native zlib)");
+  const input = new MemoryStream(toByteArray(buffer));
+  const stream = new GZipStream(input, CompressionMode.Decompress, true);
+  const output = new MemoryStream();
+  stream.CopyTo(output);
+  stream.Dispose();
+  return fromByteArray(output.ToArray());
 };
 
 // ---------------------------------------------------------------------------
@@ -138,15 +207,19 @@ export const gunzipSync = (
  */
 export const deflateSync = (
   buffer: Uint8Array,
-  _options?: ZlibOptions,
+  options?: ZlibOptions,
 ): Uint8Array => {
   if (buffer === null || buffer === undefined) {
     throw new Error("buffer must not be null");
   }
 
-  // TODO: Implement native deflate compression.
-  // The CLR baseline uses System.IO.Compression.DeflateStream.
-  throw new Error("deflateSync: not yet implemented (requires native zlib)");
+  const output = new MemoryStream();
+  const level = options !== undefined ? options.level : undefined;
+  const stream = new DeflateStream(output, toCompressionLevel(level), true);
+  const inputBytes = toByteArray(buffer);
+  stream.Write(inputBytes, 0 as int, toInt(inputBytes.length));
+  stream.Dispose();
+  return fromByteArray(output.ToArray());
 };
 
 /**
@@ -164,9 +237,12 @@ export const inflateSync = (
     throw new Error("buffer must not be null");
   }
 
-  // TODO: Implement native deflate decompression.
-  // The CLR baseline uses System.IO.Compression.DeflateStream in Decompress mode.
-  throw new Error("inflateSync: not yet implemented (requires native zlib)");
+  const input = new MemoryStream(toByteArray(buffer));
+  const stream = new DeflateStream(input, CompressionMode.Decompress, true);
+  const output = new MemoryStream();
+  stream.CopyTo(output);
+  stream.Dispose();
+  return fromByteArray(output.ToArray());
 };
 
 /**
@@ -213,17 +289,23 @@ export const inflateRawSync = (
  */
 export const brotliCompressSync = (
   buffer: Uint8Array,
-  _options?: BrotliOptions,
+  options?: BrotliOptions,
 ): Uint8Array => {
   if (buffer === null || buffer === undefined) {
     throw new Error("buffer must not be null");
   }
 
-  // TODO: Implement native Brotli compression.
-  // The CLR baseline uses System.IO.Compression.BrotliStream.
-  throw new Error(
-    "brotliCompressSync: not yet implemented (requires native brotli)",
-  );
+  const quality = options !== undefined ? options.quality : undefined;
+  const level =
+    quality !== undefined && quality <= 2
+      ? CompressionLevel.Fastest
+      : CompressionLevel.SmallestSize;
+  const output = new MemoryStream();
+  const stream = new BrotliStream(output, level, true);
+  const inputBytes = toByteArray(buffer);
+  stream.Write(inputBytes, 0 as int, toInt(inputBytes.length));
+  stream.Dispose();
+  return fromByteArray(output.ToArray());
 };
 
 /**
@@ -241,11 +323,12 @@ export const brotliDecompressSync = (
     throw new Error("buffer must not be null");
   }
 
-  // TODO: Implement native Brotli decompression.
-  // The CLR baseline uses System.IO.Compression.BrotliStream in Decompress mode.
-  throw new Error(
-    "brotliDecompressSync: not yet implemented (requires native brotli)",
-  );
+  const input = new MemoryStream(toByteArray(buffer));
+  const stream = new BrotliStream(input, CompressionMode.Decompress, true);
+  const output = new MemoryStream();
+  stream.CopyTo(output);
+  stream.Dispose();
+  return fromByteArray(output.ToArray());
 };
 
 // ---------------------------------------------------------------------------

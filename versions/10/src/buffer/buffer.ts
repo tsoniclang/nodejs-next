@@ -505,14 +505,17 @@ export class Buffer {
         this._data[i] = bytes[(i - offset) % bytes.length]!;
       }
     } else if (typeof value === "number") {
-      const byteValue = value & 0xff;
+      const byteCell = new Uint8Array(1);
+      byteCell[0] = value;
+      const byteValue = byteCell[0]!;
       for (let i = offset; i < endIndex; i += 1) {
         this._data[i] = byteValue;
       }
     } else if (value instanceof Buffer) {
-      if (value.length === 0) return this;
+      const sourceLength = value._data.length;
+      if (sourceLength === 0) return this;
       for (let i = offset; i < endIndex; i += 1) {
-        this._data[i] = value._data[(i - offset) % value.length]!;
+        this._data[i] = value._data[(i - offset) % sourceLength]!;
       }
     }
 
@@ -1237,7 +1240,9 @@ export class Buffer {
       return stringToBytes(value, encoding);
     }
     if (typeof value === "number") {
-      return new Uint8Array([value & 0xff]);
+      const byteCell = new Uint8Array(1);
+      byteCell[0] = value;
+      return byteCell;
     }
     if (value instanceof Buffer) {
       return value._data;

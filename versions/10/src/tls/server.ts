@@ -30,6 +30,12 @@ export class TLSServer extends EventEmitter {
   private _options: TlsOptions | null = null;
   private _ticketKeys: Uint8Array | null = null;
 
+  constructor();
+  constructor(secureConnectionListener: (socket: TLSSocket) => void);
+  constructor(
+    options: TlsOptions,
+    secureConnectionListener?: ((socket: TLSSocket) => void) | null
+  );
   constructor(
     optionsOrListener?: TlsOptions | ((socket: TLSSocket) => void) | null,
     secureConnectionListener?: ((socket: TLSSocket) => void) | null

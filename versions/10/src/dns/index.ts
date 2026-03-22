@@ -101,6 +101,7 @@ export const CANCELLED: string = "ECANCELLED";
 // ==================== Module state ====================
 
 const _promises: DnsPromises = new DnsPromises();
+let defaultResultOrder = "verbatim";
 
 /** Promise-based dns APIs. */
 export const promises: DnsPromises = _promises;
@@ -338,8 +339,7 @@ export const reverse = (
 
 /** Get the default value for order in dns.lookup(). */
 export const getDefaultResultOrder = (): string => {
-  // TODO: return module-level state
-  return "verbatim";
+  return defaultResultOrder;
 };
 
 /** Set the default value of order in dns.lookup(). */
@@ -349,7 +349,7 @@ export const setDefaultResultOrder = (order: string): void => {
       `Invalid order value: ${order}. Must be 'ipv4first', 'ipv6first' or 'verbatim'`,
     );
   }
-  // TODO: store in module-level state
+  defaultResultOrder = order;
 };
 
 /** Sets the IP address and port of servers to be used when performing DNS resolution. */

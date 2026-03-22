@@ -56,7 +56,7 @@ export const createInterface = (
  * @returns True if stream is a TTY and function succeeded.
  */
 export const clearLine = (
-  stream: Writable,
+  stream: Writable | null,
   dir: number,
   callback?: () => void,
 ): boolean => {
@@ -103,7 +103,7 @@ export const clearLine = (
  * @returns True if stream is a TTY and function succeeded.
  */
 export const clearScreenDown = (
-  stream: Writable,
+  stream: Writable | null,
   callback?: () => void,
 ): boolean => {
   if (stream === undefined || stream === null) {
@@ -137,7 +137,7 @@ export const clearScreenDown = (
  * @returns True if stream is a TTY and function succeeded.
  */
 export const cursorTo = (
-  stream: Writable,
+  stream: Writable | null,
   x: number,
   y?: number | null,
   callback?: () => void,
@@ -180,7 +180,7 @@ export const cursorTo = (
  * @returns True if stream is a TTY and function succeeded.
  */
 export const moveCursor = (
-  stream: Writable,
+  stream: Writable | null,
   dx: number,
   dy: number,
   callback?: () => void,

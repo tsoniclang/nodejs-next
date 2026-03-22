@@ -235,7 +235,7 @@ export const byteLengthOfString = (
 
 export const hexToBytes = (hex: string): Uint8Array => {
   const cleaned = stripCharacters(hex, (char) => char === " " || char === "\n" || char === "\r" || char === "\t");
-  const bytes = new Uint8Array(JSMath.floor(cleaned.length / 2));
+  const bytes = new Uint8Array(cleaned.length >> 1);
   for (let i = 0; i < bytes.length; i += 1) {
     bytes[i] = parseInt(cleaned.substring(i * 2, i * 2 + 2), 16);
   }
@@ -286,7 +286,7 @@ export const base64ToBytes = (base64: string): Uint8Array => {
   while (stripped.endsWith("=")) {
     stripped = stripped.slice(0, stripped.length - 1);
   }
-  const byteLength = JSMath.floor((stripped.length * 3) / 4);
+  const byteLength = (stripped.length * 3) >> 2;
   const bytes = new Uint8Array(byteLength);
   let offset: int = 0 as int;
 

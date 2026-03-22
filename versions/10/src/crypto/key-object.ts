@@ -9,11 +9,7 @@ import type { int } from "@tsonic/core/types.js";
  * Represents a cryptographic key.
  */
 export class KeyObject {
-  public readonly ["export"]: (options?: unknown) => unknown;
-
-  protected constructor() {
-    this["export"] = (options?: unknown): unknown => this.exportCore(options);
-  }
+  protected constructor() {}
 
   /**
    * The type of the key: 'secret', 'public', or 'private'.
@@ -40,6 +36,10 @@ export class KeyObject {
     throw new Error(
       "KeyObject.symmetricKeySize must be implemented by a subclass",
     );
+  }
+
+  public ["export"](options?: unknown): unknown {
+    return this.exportCore(options);
   }
 
   protected exportCore(_options?: unknown): unknown {

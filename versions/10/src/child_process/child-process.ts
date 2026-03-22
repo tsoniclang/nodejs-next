@@ -5,6 +5,7 @@
  *
  * Baseline: nodejs-clr/src/nodejs/child_process/ChildProcess.cs
  */
+import { Process } from "@tsonic/dotnet/System.Diagnostics.js";
 import { EventEmitter } from "../events-module.ts";
 
 // TODO: import Readable / Writable once stream module is ported
@@ -82,6 +83,7 @@ export class ExecOptions {
 export class ChildProcess extends EventEmitter {
   private _killed: boolean = false;
   private _pid: number = -1;
+  private _process: Process | null = null;
 
   /**
    * A Writable Stream that represents the child process's stdin.
@@ -162,16 +164,42 @@ export class ChildProcess extends EventEmitter {
    * @returns True if the signal was sent successfully.
    */
   public kill(signal?: string | null): boolean {
-    // TODO: substrate-dependent -- requires native process handle
-    // For now, mark as killed and return false (no real process to kill)
-    void signal;
-    return false;
+    const normalizedSignal = signal ?? "SIGTERM";
+
+    if (this._process === null) {
+      if (this.exitCode !== null || this.signalCode !== null) {
+        return false;
+      }
+
+      this._killed = true;
+      this.signalCode = normalizedSignal;
+      this.connected = false;
+      this.emit("exit", null, normalizedSignal);
+      this.emit("close", null, normalizedSignal);
+      return true;
+    }
+
+    if (this._process.HasExited) {
+      this._syncFromProcessExit();
+      return false;
+    }
+
+    this._process.Kill();
+    this._process.WaitForExit();
+
+    this._killed = true;
+    this.signalCode = normalizedSignal;
+    this.connected = false;
+    this._syncFromProcessExit();
+    this.emit("exit", null, normalizedSignal);
+    this.emit("close", null, normalizedSignal);
+    return true;
   }
 
   /** Closes the IPC channel between parent and child. */
   public disconnect(): void {
     this.connected = false;
-    // TODO: IPC implementation
+    this.emit("disconnect");
   }
 
   /**
@@ -235,5 +263,37 @@ export class ChildProcess extends EventEmitter {
    */
   public _setKilled(killed: boolean): void {
     this._killed = killed;
+  }
+
+  public _attachProcess(process: Process): void {
+    this._process = process;
+    this._pid = process.Id;
+  }
+
+  public _setSpawnInfo(file: string, args: string[]): void {
+    this.spawnfile = file;
+    this.spawnargs = [file, ...args];
+  }
+
+  public _setConnected(connected: boolean): void {
+    this.connected = connected;
+  }
+
+  public _syncFromProcessExit(): void {
+    if (this._process === null || !this._process.HasExited) {
+      return;
+    }
+
+    this.exitCode = this._process.ExitCode;
+    this.connected = false;
+  }
+
+  public _recordSyntheticExit(
+    exitCode: number | null,
+    signalCode: string | null,
+  ): void {
+    this.exitCode = exitCode;
+    this.signalCode = signalCode;
+    this.connected = false;
   }
 }
