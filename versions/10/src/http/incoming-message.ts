@@ -10,7 +10,11 @@
  */
 
 import type { int } from "@tsonic/core/types.js";
-import { EventEmitter } from "../events-module.ts";
+import {
+  EventEmitter,
+  toEventListener,
+  toUnaryEventListener,
+} from "../events-module.ts";
 
 /**
  * Represents an incoming HTTP request (server-side) or response (client-side).
@@ -104,7 +108,7 @@ export class IncomingMessage extends EventEmitter {
     }
 
     if (callback !== undefined) {
-      this.once("timeout", callback);
+      this.once("timeout", toEventListener(callback)!);
     }
 
     // TODO: Implement actual timeout mechanism (requires OS timer substrate)
@@ -127,21 +131,21 @@ export class IncomingMessage extends EventEmitter {
    * Event handler for 'data' event.
    */
   public onData(callback: (chunk: string) => void): void {
-    this.on("data", callback as (...args: unknown[]) => void);
+    this.on("data", toUnaryEventListener<string>(callback)!);
   }
 
   /**
    * Event handler for 'end' event.
    */
   public onEnd(callback: () => void): void {
-    this.on("end", callback);
+    this.on("end", toEventListener(callback)!);
   }
 
   /**
    * Event handler for 'close' event.
    */
   public onClose(callback: () => void): void {
-    this.on("close", callback);
+    this.on("close", toEventListener(callback)!);
   }
 
   // -- Internal setters for server/client construction --

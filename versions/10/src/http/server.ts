@@ -9,7 +9,11 @@
  */
 
 import type { int } from "@tsonic/core/types.js";
-import { EventEmitter } from "../events-module.ts";
+import {
+  EventEmitter,
+  toBinaryEventListener,
+  toEventListener,
+} from "../events-module.ts";
 import { IncomingMessage } from "./incoming-message.ts";
 import { ServerResponse } from "./server-response.ts";
 
@@ -63,7 +67,7 @@ export class Server extends EventEmitter {
     if (requestListener !== undefined && requestListener !== null) {
       this.on(
         "request",
-        requestListener as (...args: unknown[]) => void
+        toBinaryEventListener<IncomingMessage, ServerResponse>(requestListener)!
       );
     }
   }
@@ -258,7 +262,7 @@ export class Server extends EventEmitter {
     this._timeout = msecs;
 
     if (callback !== undefined && callback !== null) {
-      this.on("timeout", callback);
+      this.on("timeout", toEventListener(callback)!);
     }
 
     return this;

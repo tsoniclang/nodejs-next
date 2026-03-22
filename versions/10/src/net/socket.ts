@@ -7,7 +7,7 @@
  * Method signatures are correct; implementations that require OS interop use
  * TODO placeholders.
  */
-import { EventEmitter } from "../events-module.ts";
+import { EventEmitter, toEventListener } from "../events-module.ts";
 import type {
   SocketConstructorOpts,
   TcpSocketConnectOpts,
@@ -170,7 +170,7 @@ export class Socket extends EventEmitter {
     connectionListener: (() => void) | undefined
   ): Socket {
     if (connectionListener !== undefined) {
-      this.once("connect", connectionListener);
+      this.once("connect", toEventListener(connectionListener)!);
     }
 
     this._connecting = true;
@@ -192,7 +192,7 @@ export class Socket extends EventEmitter {
     connectionListener: (() => void) | undefined
   ): Socket {
     if (connectionListener !== undefined) {
-      this.once("connect", connectionListener);
+      this.once("connect", toEventListener(connectionListener)!);
     }
 
     // TODO: IPC connections via Unix domain sockets require OS interop
@@ -343,7 +343,7 @@ export class Socket extends EventEmitter {
    */
   public setTimeout(timeout: number, callback?: () => void): Socket {
     if (callback !== undefined) {
-      this.once("timeout", callback);
+      this.once("timeout", toEventListener(callback)!);
     }
 
     // TODO: Configure read/write timeouts on the underlying NetworkStream via OS interop

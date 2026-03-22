@@ -2,6 +2,42 @@ import type { int } from "@tsonic/core/types.js";
 
 export type EventListener = (...args: unknown[]) => void;
 
+export const toEventListener = (
+  listener: (() => void) | null | undefined
+): EventListener | undefined => {
+  if (listener === undefined || listener === null) {
+    return undefined;
+  }
+
+  return (..._args: unknown[]): void => {
+    listener();
+  };
+};
+
+export const toUnaryEventListener = <T>(
+  listener: ((value: T) => void) | null | undefined
+): EventListener | undefined => {
+  if (listener === undefined || listener === null) {
+    return undefined;
+  }
+
+  return (...args: unknown[]): void => {
+    listener(args[0] as T);
+  };
+};
+
+export const toBinaryEventListener = <T1, T2>(
+  listener: ((first: T1, second: T2) => void) | null | undefined
+): EventListener | undefined => {
+  if (listener === undefined || listener === null) {
+    return undefined;
+  }
+
+  return (...args: unknown[]): void => {
+    listener(args[0] as T1, args[1] as T2);
+  };
+};
+
 type ListenerRegistration = {
   readonly original: EventListener;
   readonly invoke: EventListener;

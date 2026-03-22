@@ -18,6 +18,14 @@ type PipeWritable = {
 };
 
 export class Stream extends EventEmitter {
+  public write(_chunk: unknown): unknown {
+    return undefined;
+  }
+
+  public end(): unknown {
+    return undefined;
+  }
+
   /**
    * Pipes the output of this readable stream into a writable stream
    * destination.

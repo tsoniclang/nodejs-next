@@ -9,7 +9,11 @@
  */
 
 import type { int } from "@tsonic/core/types.js";
-import { EventEmitter } from "../events-module.ts";
+import {
+  EventEmitter,
+  toEventListener,
+  toUnaryEventListener,
+} from "../events-module.ts";
 import { IncomingMessage } from "./incoming-message.ts";
 import { RequestOptions } from "./request-options.ts";
 
@@ -48,7 +52,7 @@ export class ClientRequest extends EventEmitter {
 
     // Register response callback if provided
     if (callback !== undefined && callback !== null) {
-      this.on("response", callback as (...args: unknown[]) => void);
+      this.on("response", toUnaryEventListener<IncomingMessage>(callback)!);
     }
   }
 
@@ -211,7 +215,7 @@ export class ClientRequest extends EventEmitter {
     this._options.timeout = msecs;
 
     if (callback !== undefined && callback !== null) {
-      this.once("timeout", callback);
+      this.once("timeout", toEventListener(callback)!);
     }
 
     return this;

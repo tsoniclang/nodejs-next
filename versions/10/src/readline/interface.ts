@@ -148,7 +148,7 @@ export class Interface extends EventEmitter {
     return new Promise<string>((resolve) => {
       const lineListener = (...args: unknown[]): void => {
         if (args.length > 0 && typeof args[0] === "string") {
-          resolve(args[0]);
+          resolve(String(args[0]));
         }
       };
 

@@ -5,6 +5,7 @@
  * Baseline: nodejs-clr/src/nodejs/stream/Duplex.cs
  */
 import { Readable } from "./readable.ts";
+import { toEventListener } from "../events-module.ts";
 
 type WriteRequest = {
   readonly chunk: unknown;
@@ -88,7 +89,7 @@ export class Duplex extends Readable {
     }
 
     if (callback !== undefined) {
-      this.once("finish", callback);
+      this.once("finish", toEventListener(callback)!);
     }
 
     this._writableEnded = true;

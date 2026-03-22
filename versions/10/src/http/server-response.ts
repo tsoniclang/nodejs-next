@@ -9,7 +9,7 @@
  */
 
 import type { int } from "@tsonic/core/types.js";
-import { EventEmitter } from "../events-module.ts";
+import { EventEmitter, toEventListener } from "../events-module.ts";
 
 /**
  * Implements Node.js http.ServerResponse.
@@ -265,7 +265,7 @@ export class ServerResponse extends EventEmitter {
     }
 
     if (callback !== undefined) {
-      this.once("timeout", callback);
+      this.once("timeout", toEventListener(callback)!);
     }
 
     // TODO: Implement actual timeout mechanism (requires OS timer substrate)

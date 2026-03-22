@@ -7,7 +7,7 @@
  * Method signatures are correct; implementations that require OS interop use
  * TODO placeholders.
  */
-import { EventEmitter } from "../events-module.ts";
+import { EventEmitter, toEventListener } from "../events-module.ts";
 import type { int } from "@tsonic/core/types.js";
 import type { ListenOptions, ServerOpts } from "./options.ts";
 import type { Socket } from "./socket.ts";
@@ -177,7 +177,7 @@ export class Server extends EventEmitter {
     }
 
     if (listeningListener !== undefined) {
-      this.once("listening", listeningListener);
+      this.once("listening", toEventListener(listeningListener)!);
     }
 
     // TODO: Create TcpListener and start accepting connections via OS interop.
@@ -212,7 +212,10 @@ export class Server extends EventEmitter {
     // TODO: Stop the TcpListener via OS interop
 
     if (callback !== undefined) {
-      this.once("close", () => callback(undefined));
+      this.once(
+        "close",
+        toEventListener(() => callback(undefined))!
+      );
     }
 
     this.emit("close");

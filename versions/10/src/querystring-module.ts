@@ -112,7 +112,10 @@ export const parse = (
 
   const actualSep = sep ?? "&";
   const actualEq = eq ?? "=";
-  const effectiveMaxKeys = maxKeys === undefined ? 1000 : maxKeys;
+  let effectiveMaxKeys = 1000;
+  if (maxKeys !== undefined) {
+    effectiveMaxKeys = maxKeys;
+  }
 
   const pairs = input.split(actualSep);
   let count = 0;
@@ -155,9 +158,18 @@ export const parse = (
 /**
  * Alias for stringify().
  */
-export const encode = stringify;
+export const encode = (
+  obj: Record<string, unknown> | null | undefined,
+  sep?: string | null,
+  eq?: string | null
+): string => stringify(obj, sep, eq);
 
 /**
  * Alias for parse().
  */
-export const decode = parse;
+export const decode = (
+  str: string,
+  sep?: string | null,
+  eq?: string | null,
+  maxKeys?: number
+): Record<string, string | string[]> => parse(str, sep, eq, maxKeys);
