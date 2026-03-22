@@ -4,9 +4,9 @@
  * Baseline: nodejs-clr/src/nodejs/crypto/Sign.cs
  */
 import {
-  DSACryptoServiceProvider,
+  DSA,
   ECDsa,
-  RSACryptoServiceProvider,
+  RSA,
   RSASignaturePadding,
 } from "@tsonic/dotnet/System.Security.Cryptography.js";
 import {
@@ -16,6 +16,7 @@ import {
 } from "./key-object.ts";
 import {
   concatBytes,
+  computeHashBytes,
   decodeInputBytes,
   encodeOutputString,
   fromByteArray,
@@ -87,7 +88,7 @@ const signBytes = (
   privateKey: PrivateKeyObject,
   data: Uint8Array,
 ): Uint8Array => {
-  if (privateKey.nativeKeyData instanceof RSACryptoServiceProvider) {
+  if (privateKey.nativeKeyData instanceof RSA) {
     return fromByteArray(
       privateKey.nativeKeyData.SignData(
         toByteArray(data),
@@ -97,11 +98,11 @@ const signBytes = (
     );
   }
 
-  if (privateKey.nativeKeyData instanceof DSACryptoServiceProvider) {
+  if (privateKey.nativeKeyData instanceof DSA) {
+    const hash = computeHashBytes(algorithm, data);
     return fromByteArray(
-      privateKey.nativeKeyData.SignData(
-        toByteArray(data),
-        toHashAlgorithmName(algorithm),
+      privateKey.nativeKeyData.CreateSignature(
+        toByteArray(hash),
       ),
     );
   }

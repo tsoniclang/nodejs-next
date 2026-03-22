@@ -2,7 +2,7 @@ import {
   computeHashBytes,
   concatBytes,
   decodeInputBytes,
-  encodeOutputBytes,
+  encodeOutputString,
 } from "./crypto-helpers.ts";
 
 /**
@@ -56,7 +56,7 @@ export class Hash {
     );
 
     if (typeof encodingOrLength === "string") {
-      return encodeOutputBytes(bytes, encodingOrLength) as string;
+      return encodeOutputString(bytes, encodingOrLength);
     }
 
     return bytes;

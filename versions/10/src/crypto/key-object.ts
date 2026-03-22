@@ -3,13 +3,15 @@
  *
  * Baseline: nodejs-clr/src/nodejs/crypto/KeyObject.cs
  */
-import type { int } from "@tsonic/core/types.js";
+import type { int, out } from "@tsonic/core/types.js";
 import {
-  DSACryptoServiceProvider,
+  DSA,
   ECDsa,
-  RSACryptoServiceProvider,
+  RSA,
 } from "@tsonic/dotnet/System.Security.Cryptography.js";
 import {
+  createDsaAlgorithm,
+  createRsaAlgorithm,
   curveFromName,
   toReadOnlyByteSpan,
 } from "./crypto-helpers.ts";
@@ -245,13 +247,19 @@ const emptyPlaceholderPrivateKey = (): PrivateKeyObject => {
   return new PrivateKeyObject(null, "rsa");
 };
 
+const isStringOrBytesKey = (
+  key: string | Uint8Array | KeyObject,
+): key is string | Uint8Array => {
+  return typeof key === "string" || key instanceof Uint8Array;
+};
+
 const tryImportRsaPublic = (
   bytes: Uint8Array,
   pem: string | null,
 ): PublicKeyObject | null => {
   try {
-    const rsa = new RSACryptoServiceProvider();
-    rsa.ImportSubjectPublicKeyInfo(toReadOnlyByteSpan(bytes), 0 as int);
+    const rsa = createRsaAlgorithm();
+    rsa.ImportSubjectPublicKeyInfo(toReadOnlyByteSpan(bytes), 0 as out<int>);
     return new PublicKeyObject(rsa, "rsa", pem);
   } catch {
     return null;
@@ -263,8 +271,8 @@ const tryImportDsaPublic = (
   pem: string | null,
 ): PublicKeyObject | null => {
   try {
-    const dsa = new DSACryptoServiceProvider();
-    dsa.ImportSubjectPublicKeyInfo(toReadOnlyByteSpan(bytes), 0 as int);
+    const dsa = createDsaAlgorithm();
+    dsa.ImportSubjectPublicKeyInfo(toReadOnlyByteSpan(bytes), 0 as out<int>);
     return new PublicKeyObject(dsa, "dsa", pem);
   } catch {
     return null;
@@ -277,7 +285,7 @@ const tryImportEcPublic = (
 ): PublicKeyObject | null => {
   try {
     const ec = ECDsa.Create(curveFromName("secp256r1"));
-    ec.ImportSubjectPublicKeyInfo(toReadOnlyByteSpan(bytes), 0 as int);
+    ec.ImportSubjectPublicKeyInfo(toReadOnlyByteSpan(bytes), 0 as out<int>);
     return new PublicKeyObject(ec, "ec", pem);
   } catch {
     return null;
@@ -289,9 +297,9 @@ const tryImportRsaPrivate = (
   pem: string | null,
 ): PrivateKeyObject | null => {
   try {
-    const rsa = new RSACryptoServiceProvider();
-    rsa.ImportPkcs8PrivateKey(toReadOnlyByteSpan(bytes), 0 as int);
-    const publicRsa = new RSACryptoServiceProvider();
+    const rsa = createRsaAlgorithm();
+    rsa.ImportPkcs8PrivateKey(toReadOnlyByteSpan(bytes), 0 as out<int>);
+    const publicRsa = createRsaAlgorithm();
     publicRsa.ImportParameters(rsa.ExportParameters(false));
     return new PrivateKeyObject(rsa, "rsa", pem, publicRsa, null);
   } catch {
@@ -304,9 +312,9 @@ const tryImportDsaPrivate = (
   pem: string | null,
 ): PrivateKeyObject | null => {
   try {
-    const dsa = new DSACryptoServiceProvider();
-    dsa.ImportPkcs8PrivateKey(toReadOnlyByteSpan(bytes), 0 as int);
-    const publicDsa = new DSACryptoServiceProvider();
+    const dsa = createDsaAlgorithm();
+    dsa.ImportPkcs8PrivateKey(toReadOnlyByteSpan(bytes), 0 as out<int>);
+    const publicDsa = createDsaAlgorithm();
     publicDsa.ImportParameters(dsa.ExportParameters(false));
     return new PrivateKeyObject(dsa, "dsa", pem, publicDsa, null);
   } catch {
@@ -320,11 +328,11 @@ const tryImportEcPrivate = (
 ): PrivateKeyObject | null => {
   try {
     const ec = ECDsa.Create(curveFromName("secp256r1"));
-    ec.ImportPkcs8PrivateKey(toReadOnlyByteSpan(bytes), 0 as int);
+    ec.ImportPkcs8PrivateKey(toReadOnlyByteSpan(bytes), 0 as out<int>);
     const publicEc = ECDsa.Create(curveFromName("secp256r1"));
     publicEc.ImportSubjectPublicKeyInfo(
       toReadOnlyByteSpan(ec.ExportSubjectPublicKeyInfo()),
-      0 as int,
+      0 as out<int>,
     );
     return new PrivateKeyObject(ec, "ec", pem, publicEc, null);
   } catch {
@@ -395,14 +403,14 @@ export const extractPublicKey = (
     return new PublicKeyObject(key.publicKeyData, key.asymmetricKeyType, key.publicPem);
   }
 
-  if (key.nativeKeyData instanceof RSACryptoServiceProvider) {
-    const publicRsa = new RSACryptoServiceProvider();
+  if (key.nativeKeyData instanceof RSA) {
+    const publicRsa = createRsaAlgorithm();
     publicRsa.ImportParameters(key.nativeKeyData.ExportParameters(false));
     return new PublicKeyObject(publicRsa, "rsa", key.publicPem);
   }
 
-  if (key.nativeKeyData instanceof DSACryptoServiceProvider) {
-    const publicDsa = new DSACryptoServiceProvider();
+  if (key.nativeKeyData instanceof DSA) {
+    const publicDsa = createDsaAlgorithm();
     publicDsa.ImportParameters(key.nativeKeyData.ExportParameters(false));
     return new PublicKeyObject(publicDsa, "dsa", key.publicPem);
   }
@@ -411,7 +419,7 @@ export const extractPublicKey = (
     const publicEc = ECDsa.Create(curveFromName("secp256r1"));
     publicEc.ImportSubjectPublicKeyInfo(
       toReadOnlyByteSpan(key.nativeKeyData.ExportSubjectPublicKeyInfo()),
-      0 as int,
+      0 as out<int>,
     );
     return new PublicKeyObject(publicEc, "ec", key.publicPem);
   }
@@ -422,6 +430,10 @@ export const extractPublicKey = (
 export const coercePublicKeyObject = (
   key: string | Uint8Array | KeyObject,
 ): PublicKeyObject => {
+  if (isStringOrBytesKey(key)) {
+    return importPublicKey(key);
+  }
+
   if (key instanceof PublicKeyObject) {
     return key;
   }
@@ -438,12 +450,16 @@ export const coercePublicKeyObject = (
     throw new Error("Key must be a private or public key");
   }
 
-  return importPublicKey(key);
+  throw new Error("Unexpected key shape");
 };
 
 export const coercePrivateKeyObject = (
   key: string | Uint8Array | KeyObject,
 ): PrivateKeyObject => {
+  if (isStringOrBytesKey(key)) {
+    return importPrivateKey(key);
+  }
+
   if (key instanceof PrivateKeyObject) {
     return key;
   }
@@ -456,5 +472,5 @@ export const coercePrivateKeyObject = (
     throw new Error("Key must be a private key");
   }
 
-  return importPrivateKey(key);
+  throw new Error("Unexpected key shape");
 };

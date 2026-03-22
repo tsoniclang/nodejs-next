@@ -1,11 +1,55 @@
 import {
   decodeInputBytes,
   encodeOutputBytes,
+  encodeOutputString,
   modPowBytes,
   numberToBytes,
   randomBytesExact,
   randomUnsignedLessThan,
 } from "./crypto-helpers.ts";
+
+function toDiffieHellmanPublicKeyBytes(
+  otherPublicKey: string,
+  inputEncoding?: string,
+): Uint8Array;
+function toDiffieHellmanPublicKeyBytes(
+  otherPublicKey: Uint8Array,
+): Uint8Array;
+function toDiffieHellmanPublicKeyBytes(
+  otherPublicKey: string | Uint8Array,
+  inputEncoding?: string,
+): Uint8Array {
+  if (typeof otherPublicKey === "string") {
+    return decodeInputBytes(otherPublicKey, inputEncoding ?? "base64");
+  }
+
+  return otherPublicKey;
+}
+
+const encodeDiffieHellmanSecret = (
+  secret: Uint8Array,
+  outputEncoding?: string,
+): string => {
+  return encodeOutputString(secret, outputEncoding ?? "base64");
+};
+
+const resolveDiffieHellmanPrimeByteLength = (primeLength: number): number => {
+  return primeLength > 7 ? primeLength / 8 : 1;
+};
+
+const resolveDiffieHellmanGeneratorBytes = (
+  generatorOrValue?: Uint8Array | number,
+): Uint8Array => {
+  if (generatorOrValue === undefined) {
+    return numberToBytes(2);
+  }
+
+  if (typeof generatorOrValue === "number") {
+    return numberToBytes(generatorOrValue);
+  }
+
+  return generatorOrValue;
+};
 
 /**
  * Node.js crypto DiffieHellman class.
@@ -30,20 +74,14 @@ export class DiffieHellman {
     generatorOrValue?: Uint8Array | number
   ) {
     if (typeof primeOrLength === "number") {
-      const byteLength = primeOrLength > 7 ? primeOrLength >> 3 : 1;
+      const byteLength = resolveDiffieHellmanPrimeByteLength(primeOrLength);
       this._prime = randomBytesExact(byteLength);
       this._prime[0] = this._prime[0]! | 0x80;
       this._prime[this._prime.length - 1] = this._prime[this._prime.length - 1]! | 0x01;
-      const gen = typeof generatorOrValue === "number" ? generatorOrValue : 2;
-      this._generator = numberToBytes(gen);
+      this._generator = resolveDiffieHellmanGeneratorBytes(generatorOrValue);
     } else {
       this._prime = primeOrLength;
-      if (generatorOrValue instanceof Uint8Array) {
-        this._generator = generatorOrValue;
-      } else {
-        const gen = typeof generatorOrValue === "number" ? generatorOrValue : 2;
-        this._generator = numberToBytes(gen);
-      }
+      this._generator = resolveDiffieHellmanGeneratorBytes(generatorOrValue);
     }
   }
 
@@ -87,10 +125,15 @@ export class DiffieHellman {
       throw new Error("Must call generateKeys() first");
     }
 
-    const publicKeyBytes =
-      typeof otherPublicKey === "string"
-        ? decodeInputBytes(otherPublicKey, inputOrOutputEncoding ?? "base64")
-        : otherPublicKey;
+    let publicKeyBytes: Uint8Array;
+    if (typeof otherPublicKey === "string") {
+      publicKeyBytes = toDiffieHellmanPublicKeyBytes(
+        otherPublicKey,
+        inputOrOutputEncoding,
+      );
+    } else {
+      publicKeyBytes = toDiffieHellmanPublicKeyBytes(otherPublicKey);
+    }
     const secret = modPowBytes(
       publicKeyBytes,
       this._privateKey,
@@ -99,15 +142,11 @@ export class DiffieHellman {
     );
 
     if (typeof otherPublicKey === "string") {
-      if (outputEncoding === undefined) {
-        return secret;
-      }
-
-      return encodeOutputBytes(secret, outputEncoding) as string;
+      return encodeDiffieHellmanSecret(secret, outputEncoding);
     }
 
     if (typeof inputOrOutputEncoding === "string") {
-      return encodeOutputBytes(secret, inputOrOutputEncoding) as string;
+      return encodeOutputString(secret, inputOrOutputEncoding);
     }
 
     return secret;

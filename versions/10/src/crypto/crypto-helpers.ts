@@ -1,8 +1,12 @@
 import type { byte, int } from "@tsonic/core/types.js";
+import { MemoryStream } from "@tsonic/dotnet/System.IO.js";
 import { Guid, ReadOnlySpan } from "@tsonic/dotnet/System.js";
 import { BigInteger } from "@tsonic/dotnet/System.Numerics.js";
 import {
-  AesManaged,
+  CipherMode,
+  CryptoStream,
+  CryptoStreamMode,
+  DSA,
   ECCurve,
   ECCurve_NamedCurves,
   HKDF,
@@ -16,6 +20,7 @@ import {
   PaddingMode,
   RandomNumberGenerator,
   Rfc2898DeriveBytes,
+  RSA,
   SHA1,
   SHA256,
   SHA384,
@@ -25,6 +30,7 @@ import {
   SHA512,
   Shake128,
   Shake256,
+  SymmetricAlgorithm,
 } from "@tsonic/dotnet/System.Security.Cryptography.js";
 import {
   bytesToString,
@@ -87,11 +93,16 @@ export const sliceBytes = (
   start: number,
   end?: number,
 ): Uint8Array => {
-  const actualEnd = end === undefined ? buffer.length : end;
-  const length = actualEnd > start ? actualEnd - start : 0;
+  const startIndex = toInt(start);
+  const actualEndIndex =
+    end === undefined ? (buffer.length as int) : toInt(end);
+  const length =
+    actualEndIndex > startIndex
+      ? toInt(actualEndIndex - startIndex)
+      : (0 as int);
   const result = new Uint8Array(length);
-  for (let index = 0; index < length; index += 1) {
-    result[index] = buffer[start + index]!;
+  for (let index = 0 as int; index < length; index += 1) {
+    result[index] = buffer[toInt(startIndex + index)]!;
   }
   return result;
 };
@@ -258,15 +269,47 @@ export const randomBytesExact = (size: number): Uint8Array => {
   return fromByteArray(RandomNumberGenerator.GetBytes(toInt(size)));
 };
 
+export const createAesAlgorithm = (): SymmetricAlgorithm => {
+  const aes = SymmetricAlgorithm.Create("Aes");
+  if (aes === undefined) {
+    throw new Error("AES is unavailable");
+  }
+  return aes;
+};
+
+export const createRsaAlgorithm = (): RSA => {
+  const rsa = RSA.Create("RSA");
+  if (rsa === undefined) {
+    throw new Error("RSA is unavailable");
+  }
+  return rsa;
+};
+
+export const createDsaAlgorithm = (): DSA => {
+  const providers = ["DSAOpenSsl", "DSACng", "DSA"];
+  for (let index = 0; index < providers.length; index += 1) {
+    const dsa = DSA.Create(providers[index]!);
+    if (dsa !== undefined) {
+      return dsa;
+    }
+  }
+
+  throw new Error("DSA is unavailable");
+};
+
 export const fillRandomBytes = (
   buffer: Uint8Array,
-  offset: number = 0,
-  size?: number,
+  offset: int = 0 as int,
+  size?: int,
 ): Uint8Array => {
-  const actualSize = size === undefined ? buffer.length - offset : size;
+  const offsetIndex = toInt(offset);
+  const actualSize =
+    size === undefined
+      ? toInt(buffer.length - offsetIndex)
+      : toInt(size);
   const random = randomBytesExact(actualSize);
-  for (let index = 0; index < actualSize; index += 1) {
-    buffer[offset + index] = random[index]!;
+  for (let index = 0 as int; index < actualSize; index += 1) {
+    buffer[toInt(offsetIndex + index)] = random[index]!;
   }
   return buffer;
 };
@@ -366,41 +409,41 @@ export const transformAes = (
     throw new Error(`Invalid IV for ${algorithm}`);
   }
 
-  const aes = new AesManaged();
+  const aes = createAesAlgorithm();
   aes.Key = toByteArray(key);
-  aes.KeySize = toInt(config.keyLength * 8);
   aes.Padding = PaddingMode.PKCS7;
 
   try {
+    if (iv !== null) {
+      aes.IV = toByteArray(iv);
+    }
+
     switch (config.mode) {
       case "cbc":
-        return encrypt
-          ? fromByteArray(aes.EncryptCbc(toByteArray(data), toByteArray(iv!)))
-          : fromByteArray(aes.DecryptCbc(toByteArray(data), toByteArray(iv!)));
+        aes.Mode = CipherMode.CBC;
+        break;
       case "cfb":
-        return encrypt
-          ? fromByteArray(
-              aes.EncryptCfb(
-                toByteArray(data),
-                toByteArray(iv!),
-                PaddingMode.PKCS7,
-                128 as int,
-              ),
-            )
-          : fromByteArray(
-              aes.DecryptCfb(
-                toByteArray(data),
-                toByteArray(iv!),
-                PaddingMode.PKCS7,
-                128 as int,
-              ),
-            );
+        aes.Mode = CipherMode.CFB;
+        break;
       case "ecb":
-        return encrypt
-          ? fromByteArray(aes.EncryptEcb(toByteArray(data), PaddingMode.PKCS7))
-          : fromByteArray(aes.DecryptEcb(toByteArray(data), PaddingMode.PKCS7));
+        aes.Mode = CipherMode.ECB;
+        break;
       default:
         throw new Error(`Unsupported cipher mode: ${config.mode}`);
+    }
+
+    const transform = encrypt ? aes.CreateEncryptor() : aes.CreateDecryptor();
+    const output = new MemoryStream();
+    const stream = new CryptoStream(output, transform, CryptoStreamMode.Write, true);
+    try {
+      const inputBytes = toByteArray(data);
+      stream.Write(inputBytes, 0 as int, toInt(inputBytes.length));
+      stream.FlushFinalBlock();
+      return fromByteArray(output.ToArray());
+    } finally {
+      stream.Dispose();
+      output.Dispose();
+      transform.Dispose();
     }
   } finally {
     aes.Dispose();
@@ -485,8 +528,8 @@ const pkcs1Type1Pad = (
   const padded = new Uint8Array(blockLength);
   padded[0] = 0x00;
   padded[1] = 0x01;
-  const separatorIndex = blockLength - data.length - 1;
-  for (let index = 2; index < separatorIndex; index += 1) {
+  const separatorIndex = toInt(blockLength - data.length - 1);
+  for (let index = 2 as int; index < separatorIndex; index += 1) {
     padded[index] = 0xff;
   }
   padded[separatorIndex] = 0x00;

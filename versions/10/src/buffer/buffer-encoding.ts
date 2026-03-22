@@ -293,8 +293,14 @@ export const base64ToBytes = (base64: string): Uint8Array => {
   for (let i = 0; i < stripped.length; i += 4) {
     const a = BASE64_LOOKUP[stripped[i]!] ?? (0 as int);
     const b = BASE64_LOOKUP[stripped[i + 1]!] ?? (0 as int);
-    const c = BASE64_LOOKUP[stripped[i + 2]!] ?? (0 as int);
-    const d = BASE64_LOOKUP[stripped[i + 3]!] ?? (0 as int);
+    const c =
+      i + 2 < stripped.length
+        ? (BASE64_LOOKUP[stripped[i + 2]!] ?? (0 as int))
+        : (0 as int);
+    const d =
+      i + 3 < stripped.length
+        ? (BASE64_LOOKUP[stripped[i + 3]!] ?? (0 as int))
+        : (0 as int);
 
     bytes[offset] = ((a << 2) | (b >> 4)) & 0xff;
     offset += 1;

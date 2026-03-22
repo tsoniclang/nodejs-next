@@ -4,9 +4,9 @@
  * Baseline: nodejs-clr/src/nodejs/crypto/Verify.cs
  */
 import {
-  DSACryptoServiceProvider,
+  DSA,
   ECDsa,
-  RSACryptoServiceProvider,
+  RSA,
   RSASignaturePadding,
 } from "@tsonic/dotnet/System.Security.Cryptography.js";
 import {
@@ -16,6 +16,7 @@ import {
 } from "./key-object.ts";
 import {
   concatBytes,
+  computeHashBytes,
   decodeInputBytes,
   toHashAlgorithmName,
   toByteArray,
@@ -82,7 +83,7 @@ const verifyBytes = (
   data: Uint8Array,
   signature: Uint8Array,
 ): boolean => {
-  if (publicKey.nativeKeyData instanceof RSACryptoServiceProvider) {
+  if (publicKey.nativeKeyData instanceof RSA) {
     return publicKey.nativeKeyData.VerifyData(
       toByteArray(data),
       toByteArray(signature),
@@ -91,11 +92,11 @@ const verifyBytes = (
     );
   }
 
-  if (publicKey.nativeKeyData instanceof DSACryptoServiceProvider) {
-    return publicKey.nativeKeyData.VerifyData(
-      toByteArray(data),
+  if (publicKey.nativeKeyData instanceof DSA) {
+    const hash = computeHashBytes(algorithm, data);
+    return publicKey.nativeKeyData.VerifySignature(
+      toByteArray(hash),
       toByteArray(signature),
-      toHashAlgorithmName(algorithm),
     );
   }
 

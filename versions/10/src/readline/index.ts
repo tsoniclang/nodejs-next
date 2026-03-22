@@ -37,13 +37,12 @@ export const createInterface = (
       throw new Error("input stream is required");
     }
     return new Interface(optionsOrInput);
+  } else {
+    const options = new InterfaceOptions();
+    options.input = optionsOrInput as Readable;
+    options.output = output;
+    return new Interface(options);
   }
-
-  // Treat as Readable input stream
-  const options = new InterfaceOptions();
-  options.input = optionsOrInput as Readable;
-  options.output = output;
-  return new Interface(options);
 };
 
 /**

@@ -249,6 +249,18 @@ export class Buffer {
     return new Buffer(copy);
   }
 
+  private static fromNonString(
+    value: number[] | Buffer | Uint8Array,
+  ): Buffer {
+    if (value instanceof Buffer) {
+      return Buffer.fromBuffer(value);
+    }
+    if (value instanceof Uint8Array) {
+      return Buffer.fromUint8Array(value);
+    }
+    return Buffer.fromArray(value);
+  }
+
   /**
    * Overloaded `from` matching Node.js signatures.
    */
@@ -262,14 +274,7 @@ export class Buffer {
         typeof encodingOrOffset === "string" ? encodingOrOffset : "utf8",
       );
     }
-    if (value instanceof Buffer) {
-      return Buffer.fromBuffer(value);
-    }
-    if (value instanceof Uint8Array) {
-      return Buffer.fromUint8Array(value as Uint8Array);
-    }
-    // number[]
-    return Buffer.fromArray(value as number[]);
+    return Buffer.fromNonString(value);
   }
 
   /**

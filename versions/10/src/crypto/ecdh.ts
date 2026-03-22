@@ -1,12 +1,38 @@
-import type { int } from "@tsonic/core/types.js";
+import type { int, out } from "@tsonic/core/types.js";
 import { ECDiffieHellman } from "@tsonic/dotnet/System.Security.Cryptography.js";
 import {
   curveFromName,
   decodeInputBytes,
   encodeOutputBytes,
+  encodeOutputString,
   fromByteArray,
   toReadOnlyByteSpan,
 } from "./crypto-helpers.ts";
+
+function toEcdhPublicKeyBytes(
+  otherPublicKey: string,
+  inputEncoding?: string,
+): Uint8Array;
+function toEcdhPublicKeyBytes(
+  otherPublicKey: Uint8Array,
+): Uint8Array;
+function toEcdhPublicKeyBytes(
+  otherPublicKey: string | Uint8Array,
+  inputEncoding?: string,
+): Uint8Array {
+  if (typeof otherPublicKey === "string") {
+    return decodeInputBytes(otherPublicKey, inputEncoding ?? "base64");
+  }
+
+  return otherPublicKey;
+}
+
+const encodeEcdhSecret = (
+  secret: Uint8Array,
+  outputEncoding?: string,
+): string => {
+  return encodeOutputString(secret, outputEncoding ?? "base64");
+};
 
 /**
  * Node.js crypto ECDH class.
@@ -56,25 +82,29 @@ export class ECDH {
     inputOrOutputEncoding?: string,
     outputEncoding?: string
   ): string | Uint8Array {
-    const publicKeyBytes =
-      typeof otherPublicKey === "string"
-        ? decodeInputBytes(otherPublicKey, inputOrOutputEncoding ?? "base64")
-        : otherPublicKey;
+    let publicKeyBytes: Uint8Array;
+    if (typeof otherPublicKey === "string") {
+      publicKeyBytes = toEcdhPublicKeyBytes(
+        otherPublicKey,
+        inputOrOutputEncoding,
+      );
+    } else {
+      publicKeyBytes = toEcdhPublicKeyBytes(otherPublicKey);
+    }
     const other = ECDiffieHellman.Create(curveFromName(this._curveName));
-    other.ImportSubjectPublicKeyInfo(toReadOnlyByteSpan(publicKeyBytes), 0 as int);
+    other.ImportSubjectPublicKeyInfo(
+      toReadOnlyByteSpan(publicKeyBytes),
+      0 as out<int>,
+    );
     const secret = fromByteArray(this._ecdh.DeriveKeyMaterial(other.PublicKey));
     other.Dispose();
 
     if (typeof otherPublicKey === "string") {
-      if (outputEncoding === undefined) {
-        return secret;
-      }
-
-      return encodeOutputBytes(secret, outputEncoding) as string;
+      return encodeEcdhSecret(secret, outputEncoding);
     }
 
     if (typeof inputOrOutputEncoding === "string") {
-      return encodeOutputBytes(secret, inputOrOutputEncoding) as string;
+      return encodeOutputString(secret, inputOrOutputEncoding);
     }
 
     return secret;
@@ -131,6 +161,6 @@ export class ECDH {
       typeof privateKey === "string"
         ? decodeInputBytes(privateKey, encoding ?? "base64")
         : privateKey;
-    this._ecdh.ImportECPrivateKey(toReadOnlyByteSpan(bytes), 0 as int);
+    this._ecdh.ImportECPrivateKey(toReadOnlyByteSpan(bytes), 0 as out<int>);
   }
 }

@@ -568,6 +568,14 @@ const toInt32 = (value: number): int => {
   throw new RangeError("Expected Int32-compatible numeric value");
 };
 
+const toNumberArg = (value: unknown): number => {
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) {
+    throw new RangeError("Expected numeric argument");
+  }
+  return numeric;
+};
+
 const copyRange = (data: Uint8Array, start: int, end: int): Uint8Array => {
   const result = new Uint8Array(end - start);
   for (let index = 0; index < result.length; index += 1) {
@@ -619,8 +627,8 @@ const parseSendArgs = (
     typeof arg0 === "number" &&
     typeof arg1 === "number"
   ) {
-    const offset = toInt32(arg0);
-    const length = toInt32(arg1);
+    const offset = toInt32(toNumberArg(arg0));
+    const length = toInt32(toNumberArg(arg1));
 
     if (offset < 0 || offset >= msg.length) {
       throw new RangeError("Offset must be within buffer bounds");
@@ -648,7 +656,7 @@ const parseSendArgs = (
 
     // send(msg, offset, length, port, ...)
     if (typeof arg2 === "number") {
-      const port = arg2;
+      const port = toNumberArg(arg2);
 
       // send(msg, offset, length, port)
       if (args.length === 3) {
@@ -682,7 +690,7 @@ const parseSendArgs = (
 
   // send(msg, port, ...)
   if (typeof arg0 === "number") {
-    const port = arg0;
+    const port = toNumberArg(arg0);
 
     // send(msg, port)
     if (args.length === 1) {
