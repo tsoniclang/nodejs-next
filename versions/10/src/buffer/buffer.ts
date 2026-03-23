@@ -123,6 +123,8 @@ class BufferInternals {
 }
 
 export class Buffer {
+  [index: number]: byte;
+
   /** The underlying typed array. */
   private readonly _data: Uint8Array;
 
@@ -249,16 +251,22 @@ export class Buffer {
     return new Buffer(copy);
   }
 
+  private static isNumberArray(
+    value: number[] | Buffer | Uint8Array,
+  ): value is number[] {
+    return Array.isArray(value);
+  }
+
   private static fromNonString(
     value: number[] | Buffer | Uint8Array,
   ): Buffer {
     if (value instanceof Buffer) {
       return Buffer.fromBuffer(value);
     }
-    if (value instanceof Uint8Array) {
-      return Buffer.fromUint8Array(value);
+    if (Buffer.isNumberArray(value)) {
+      return Buffer.fromArray(value);
     }
-    return Buffer.fromArray(value);
+    return Buffer.fromUint8Array(value);
   }
 
   /**
@@ -275,6 +283,10 @@ export class Buffer {
       );
     }
     return Buffer.fromNonString(value);
+  }
+
+  static fromBytes(bytes: byte[]): Buffer {
+    return new Buffer(BufferInternals.toUint8Array(bytes));
   }
 
   /**
@@ -1259,7 +1271,8 @@ export class Buffer {
     const cleaned = BufferInternals.stripWhitespace(hex);
     const bytesToWrite = Math.min(JSMath.floor(cleaned.length / 2), maxLength);
     for (let i = 0; i < bytesToWrite; i += 1) {
-      this._data[offset + i] = parseInt(cleaned.substring(i * 2, i * 2 + 2), 16);
+      this._data[offset + i] =
+        parseInt(cleaned.substring(i * 2, i * 2 + 2), 16) ?? 0;
     }
     return bytesToWrite;
   }

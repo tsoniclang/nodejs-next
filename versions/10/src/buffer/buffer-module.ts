@@ -89,7 +89,7 @@ export const isAscii = (value: Buffer | Uint8Array): boolean => {
     throw new NodeTypeError("The argument must be a Buffer or Uint8Array");
   }
 
-  const data = value instanceof Buffer ? value.buffer : value;
+  const data: Uint8Array = value instanceof Buffer ? value.buffer : value;
   for (let i = 0; i < data.length; i += 1) {
     if (data[i]! > 0x7f) return false;
   }
@@ -104,7 +104,7 @@ export const isUtf8 = (value: Buffer | Uint8Array): boolean => {
     throw new NodeTypeError("The argument must be a Buffer or Uint8Array");
   }
 
-  const data = value instanceof Buffer ? value.buffer : value;
+  const data: Uint8Array = value instanceof Buffer ? value.buffer : value;
 
   // Validate UTF-8 byte sequences manually
   let i = 0;

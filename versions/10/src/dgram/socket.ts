@@ -108,7 +108,12 @@ export class DgramSocket extends EventEmitter {
       cb = typeof addressOrCallback === "function" ? addressOrCallback : callback;
     } else {
       // bind(port?, address?, callback?)
-      port = portOrCallbackOrOptions;
+      if (typeof portOrCallbackOrOptions === "number") {
+        const numericPort: int = portOrCallbackOrOptions;
+        port = numericPort;
+      } else {
+        port = 0;
+      }
 
       if (typeof addressOrCallback === "function") {
         cb = addressOrCallback;

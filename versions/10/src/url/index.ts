@@ -3,6 +3,9 @@
  *
  * Baseline: nodejs-clr/src/nodejs/url/module.cs
  */
+/// <reference path="../../globals.d.ts" />
+
+import type {} from "../type-bootstrap.js";
 
 export { URL } from "./url.ts";
 export { URLSearchParams } from "./urlsearch-params.ts";

@@ -3,6 +3,10 @@
  *
  * Baseline: nodejs-clr/src/nodejs/child_process/
  */
+/// <reference path="../../globals.d.ts" />
+
+import type {} from "../type-bootstrap.js";
+
 import { Process, ProcessStartInfo } from "@tsonic/dotnet/System.Diagnostics.js";
 import {
   OSPlatform,

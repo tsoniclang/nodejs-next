@@ -1,3 +1,7 @@
+/// <reference path="../globals.d.ts" />
+
+import type {} from "./type-bootstrap.js";
+
 import type { int } from "@tsonic/core/types.js";
 
 export type EventListener = (...args: unknown[]) => void;
@@ -76,6 +80,7 @@ export class EventEmitter {
 
   private readonly listenersByEvent: Map<string, ListenerRegistration[]> =
     new Map<string, ListenerRegistration[]>();
+  private readonly knownEventNames: string[] = [];
   private _maxListeners: int = EventEmitter._defaultMaxListeners;
 
   public static get defaultMaxListeners(): int {
@@ -143,6 +148,7 @@ export class EventEmitter {
 
     if (remaining.length === 0) {
       this.listenersByEvent.delete(eventName);
+      this.removeKnownEventName(eventName);
     } else {
       this.listenersByEvent.set(eventName, remaining);
     }
@@ -161,11 +167,13 @@ export class EventEmitter {
         this.removeAllListeners(name);
       }
       this.listenersByEvent.clear();
+      this.knownEventNames.splice(0, this.knownEventNames.length);
       return this;
     }
 
     const listeners = this.listeners(eventName);
     this.listenersByEvent.delete(eventName);
+    this.removeKnownEventName(eventName);
 
     if (eventName !== REMOVE_LISTENER_EVENT) {
       for (const listener of listeners) {
@@ -225,7 +233,7 @@ export class EventEmitter {
   }
 
   public eventNames(): string[] {
-    return Array.from(this.listenersByEvent.keys());
+    return [...this.knownEventNames];
   }
 
   public getMaxListeners(): int {
@@ -252,6 +260,9 @@ export class EventEmitter {
     const next = prepend
       ? [registration, ...existing]
       : [...existing, registration];
+    if (existing.length === 0) {
+      this.knownEventNames.push(eventName);
+    }
     this.listenersByEvent.set(eventName, next);
 
     if (eventName !== NEW_LISTENER_EVENT) {
@@ -282,6 +293,13 @@ export class EventEmitter {
     };
 
     return { original: listener, invoke, once: true };
+  }
+
+  private removeKnownEventName(eventName: string): void {
+    const index = this.knownEventNames.indexOf(eventName);
+    if (index >= 0) {
+      this.knownEventNames.splice(index, 1);
+    }
   }
 }
 

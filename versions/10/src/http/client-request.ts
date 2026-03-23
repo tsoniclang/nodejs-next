@@ -9,13 +9,13 @@
  */
 
 import type { int } from "@tsonic/core/types.js";
+import type { IncomingMessage as IncomingMessageType } from "./incoming-message.ts";
+import type { RequestOptions as RequestOptionsType } from "./request-options.ts";
 import {
   EventEmitter,
   toEventListener,
   toUnaryEventListener,
 } from "../events-module.ts";
-import { IncomingMessage } from "./incoming-message.ts";
-import { RequestOptions } from "./request-options.ts";
 
 /**
  * Implements Node.js http.ClientRequest.
@@ -23,7 +23,7 @@ import { RequestOptions } from "./request-options.ts";
  * Extends EventEmitter to support events like 'response', 'error', 'timeout'.
  */
 export class ClientRequest extends EventEmitter {
-  private readonly _options: RequestOptions;
+  private readonly _options: RequestOptionsType;
   private readonly _requestHeaders: Map<string, string> =
     new Map<string, string>();
   private _requestBody: string = "";
@@ -31,17 +31,19 @@ export class ClientRequest extends EventEmitter {
   private _ended: boolean = false;
 
   constructor(
-    options: RequestOptions,
-    callback?: ((res: IncomingMessage) => void) | null
+    options: RequestOptionsType,
+    callback?: ((res: IncomingMessageType) => void) | null
   ) {
     super();
     this._options = options;
 
     // Copy headers from options
     if (options.headers !== null) {
-      for (const [key, value] of options.headers) {
+      (options.headers as unknown as {
+        forEach(callback: (value: string, key: string) => void): void;
+      }).forEach((value, key) => {
         this._requestHeaders.set(key, value);
-      }
+      });
     }
 
     // Add basic auth if provided
@@ -52,7 +54,7 @@ export class ClientRequest extends EventEmitter {
 
     // Register response callback if provided
     if (callback !== undefined && callback !== null) {
-      this.on("response", toUnaryEventListener<IncomingMessage>(callback)!);
+      this.on("response", toUnaryEventListener<IncomingMessageType>(callback)!);
     }
   }
 
@@ -119,7 +121,13 @@ export class ClientRequest extends EventEmitter {
    * @returns Array of header names.
    */
   public getHeaderNames(): string[] {
-    return Array.from(this._requestHeaders.keys());
+    const names: string[] = [];
+    (this._requestHeaders as unknown as {
+      forEach(callback: (value: string, key: string) => void): void;
+    }).forEach((_value, key) => {
+      names.push(key);
+    });
+    return names;
   }
 
   /**

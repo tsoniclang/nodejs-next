@@ -1,3 +1,7 @@
+/// <reference path="../globals.d.ts" />
+
+import type {} from "./type-bootstrap.js";
+
 import type { int } from "@tsonic/core/types.js";
 import { Environment } from "@tsonic/dotnet/System.js";
 import { Process } from "@tsonic/dotnet/System.Diagnostics.js";
@@ -265,6 +269,10 @@ const getParentProcessId = (): int => {
   }
 
   const parsed = Number.parseInt(parts[3] ?? "", 10);
+  if (parsed === undefined || Number.isNaN(parsed)) {
+    return 0 as int;
+  }
+
   return toInt32(parsed) ?? (0 as int);
 };
 

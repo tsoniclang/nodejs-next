@@ -1,3 +1,7 @@
+/// <reference path="../globals.d.ts" />
+
+import type {} from "./type-bootstrap.js";
+
 import { Console as DotnetConsole } from "@tsonic/dotnet/System.js";
 import { Stopwatch } from "@tsonic/dotnet/System.Diagnostics.js";
 

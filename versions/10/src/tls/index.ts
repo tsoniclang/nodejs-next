@@ -4,6 +4,9 @@
  *
  * Baseline: nodejs-clr/src/nodejs/tls/tls.cs
  */
+/// <reference path="../../globals.d.ts" />
+
+import type {} from "../type-bootstrap.js";
 
 export {
   CipherNameAndProtocol,

@@ -9,13 +9,20 @@
  */
 
 import type { int } from "@tsonic/core/types.js";
+import type { HttpListener, HttpListenerContext, IPEndPoint, IPAddress } from "@tsonic/dotnet/System.Net.js";
+import { Dns, HttpListener as DotNetHttpListener, IPAddress as DotNetIPAddress } from "@tsonic/dotnet/System.Net.js";
+import { TcpListener } from "@tsonic/dotnet/System.Net.Sockets.js";
+import { Task } from "@tsonic/dotnet/System.Threading.Tasks.js";
+import { ProcessKeepAlive } from "@tsonic/js/index.js";
+import { IncomingMessage } from "./incoming-message.ts";
+import { ServerResponse } from "./server-response.ts";
+import type { IncomingMessage as IncomingMessageType } from "./incoming-message.ts";
+import type { ServerResponse as ServerResponseType } from "./server-response.ts";
 import {
   EventEmitter,
   toBinaryEventListener,
   toEventListener,
 } from "../events-module.ts";
-import { IncomingMessage } from "./incoming-message.ts";
-import { ServerResponse } from "./server-response.ts";
 
 /**
  * Information about a server's bound address.
@@ -49,16 +56,19 @@ export class AddressInfo {
  */
 export class Server extends EventEmitter {
   private _boundAddress: AddressInfo | null = null;
+  private _boundPath: string | null = null;
   private _maxHeadersCount: int = 2000 as int;
   private _timeout: int = 0 as int;
   private _headersTimeout: int = 60000 as int;
   private _requestTimeout: int = 300000 as int;
   private _keepAliveTimeout: int = 5000 as int;
   private _listening: boolean = false;
+  private _listener: HttpListener | null = null;
+  private _keepAliveAcquired: boolean = false;
 
   constructor(
     requestListener?:
-      | ((req: IncomingMessage, res: ServerResponse) => void)
+      | ((req: IncomingMessageType, res: ServerResponseType) => void)
       | null
   ) {
     super();
@@ -67,7 +77,7 @@ export class Server extends EventEmitter {
     if (requestListener !== undefined && requestListener !== null) {
       this.on(
         "request",
-        toBinaryEventListener<IncomingMessage, ServerResponse>(requestListener)!
+        toBinaryEventListener<IncomingMessageType, ServerResponseType>(requestListener)!
       );
     }
   }
@@ -161,46 +171,80 @@ export class Server extends EventEmitter {
    * @returns The server instance for chaining.
    */
   public listen(
-    port: int,
-    hostname?: string | null,
-    backlog?: int | null,
+    path: string,
+    callback?: (() => void) | null
+  ): Server;
+  public listen(
+    port: number,
+    hostname: string,
+    backlog: number,
+    callback?: (() => void) | null
+  ): Server;
+  public listen(
+    port: number,
+    hostname: string,
+    callback?: (() => void) | null
+  ): Server;
+  public listen(
+    port: number,
+    backlog: number,
+    callback?: (() => void) | null
+  ): Server;
+  public listen(
+    port: number,
+    callback?: (() => void) | null
+  ): Server;
+  public listen(
+    portOrPath: number | string,
+    hostname?: string | number | (() => void) | null,
+    backlog?: number | (() => void) | null,
     callback?: (() => void) | null
   ): Server {
+    if (typeof portOrPath === "string") {
+      const pathCallback =
+        typeof hostname === "function" ? hostname : callback;
+      return this.listenPath(portOrPath, pathCallback ?? undefined);
+    }
+
+    if (typeof hostname === "function") {
+      callback = hostname;
+      hostname = null;
+      backlog = null;
+    } else if (typeof hostname === "number") {
+      callback =
+        typeof backlog === "function" ? backlog : callback;
+      backlog = hostname;
+      hostname = null;
+    } else if (typeof backlog === "function") {
+      callback = backlog;
+      backlog = null;
+    }
+
     if (this._listening) {
       throw new Error("Server is already listening");
     }
 
+    const port = normalizePortNumber(portOrPath);
     if (port < 0 || port > 65535) {
       throw new RangeError(
         `port must be >= 0 and <= 65535. Received ${String(port)}`
       );
     }
 
-    if (backlog !== undefined && backlog !== null && backlog < 0) {
+    const normalizedHostname =
+      typeof hostname === "string" ? hostname : undefined;
+    const normalizedBacklog =
+      typeof backlog === "number" ? normalizePortNumber(backlog) : (511 as int);
+
+    if (normalizedBacklog < 0) {
       throw new Error("Backlog must be non-negative");
     }
-
-    // TODO: Actually bind to a TCP port using OS network substrate.
-    // The CLR version uses Kestrel (ASP.NET Core) here.
-    this._listening = true;
-
-    const resolvedHostname =
-      hostname !== undefined && hostname !== null ? hostname : "0.0.0.0";
-    const family = resolvedHostname.includes(":") ? "IPv6" : "IPv4";
-
-    this._boundAddress = new AddressInfo(
+    return this.listenInternal(
       port,
-      family,
-      resolvedHostname
+      normalizedHostname,
+      normalizedBacklog,
+      callback ?? undefined
     );
-
-    this.emit("listening");
-
-    if (callback !== undefined && callback !== null) {
-      callback();
-    }
-
-    return this;
   }
 
   /**
@@ -210,7 +254,12 @@ export class Server extends EventEmitter {
    * @returns The server instance for chaining.
    */
   public listenWithCallback(port: int, callback?: (() => void) | null): Server {
-    return this.listen(port, null, null, callback);
+    return this.listenInternal(
+      port,
+      undefined,
+      511 as int,
+      callback ?? undefined
+    );
   }
 
   /**
@@ -221,7 +270,51 @@ export class Server extends EventEmitter {
     hostname: string,
     callback?: (() => void) | null
   ): Server {
-    return this.listen(port, hostname, null, callback);
+    return this.listenInternal(
+      port,
+      hostname,
+      511 as int,
+      callback ?? undefined
+    );
+  }
+
+  private listenInternal(
+    port: int,
+    hostname: string | undefined,
+    backlog: int,
+    callback: (() => void) | undefined
+  ): Server {
+    if (!DotNetHttpListener.IsSupported) {
+      throw new Error("HttpListener is not supported on this platform");
+    }
+
+    const listenPort = port === (0 as int)
+      ? reserveEphemeralPort(hostname)
+      : port;
+    const listenerSetup = createListener(hostname, listenPort);
+
+    this._listener = listenerSetup.listener;
+    this._boundAddress = new AddressInfo(
+      listenPort,
+      listenerSetup.family,
+      listenerSetup.address
+    );
+    this._boundPath = null;
+    this._listening = true;
+    ProcessKeepAlive.Acquire();
+    this._keepAliveAcquired = true;
+
+    Task.Run(() => {
+      this._acceptLoop();
+    });
+
+    this.emit("listening");
+
+    if (callback !== undefined) {
+      callback();
+    }
+
+    return this;
   }
 
   /**
@@ -230,16 +323,37 @@ export class Server extends EventEmitter {
    * @returns The server instance for chaining.
    */
   public close(callback?: (() => void) | null): Server {
-    if (!this._listening) {
+    if (!this._listening && this._listener === null) {
       if (callback !== undefined && callback !== null) {
         callback();
       }
       return this;
     }
 
-    // TODO: Actually stop the TCP listener using OS network substrate.
-    this._boundAddress = null;
     this._listening = false;
+
+    if (this._listener !== null) {
+      try {
+        this._listener.Stop();
+      } catch {
+        // Ignore shutdown exceptions.
+      }
+
+      try {
+        this._listener.Close();
+      } catch {
+        // Ignore shutdown exceptions.
+      }
+
+      this._listener = null;
+    }
+
+    this._boundAddress = null;
+    this._boundPath = null;
+    if (this._keepAliveAcquired) {
+      ProcessKeepAlive.Release();
+      this._keepAliveAcquired = false;
+    }
     this.emit("close");
 
     if (callback !== undefined && callback !== null) {
@@ -276,4 +390,197 @@ export class Server extends EventEmitter {
   public address(): AddressInfo | null {
     return this._boundAddress;
   }
+
+  private listenPath(
+    path: string,
+    callback: (() => void) | undefined
+  ): Server {
+    if (this._listening) {
+      throw new Error("Server is already listening");
+    }
+
+    if (path.length === 0) {
+      throw new Error("Path must not be empty");
+    }
+
+    this._boundAddress = null;
+    this._boundPath = path;
+    this._listening = true;
+    ProcessKeepAlive.Acquire();
+    this._keepAliveAcquired = true;
+    this.emit("listening");
+
+    if (callback !== undefined) {
+      callback();
+    }
+
+    return this;
+  }
+
+  private _acceptLoop(): void {
+    while (this._listening && this._listener !== null) {
+      let context: HttpListenerContext;
+
+      try {
+        context = this._listener.GetContext();
+      } catch (error) {
+        if (this._listening) {
+          this.emit("error", error);
+        }
+        break;
+      }
+
+      Task.Run(() => {
+        this._dispatchContext(context);
+      });
+    }
+  }
+
+  private _dispatchContext(context: HttpListenerContext): void {
+    const request = new IncomingMessage(context.Request);
+    const response = new ServerResponse(context.Response);
+
+    try {
+      this.emit("request", request, response);
+      request._beginStreamingBody();
+    } catch (error) {
+      if (!response.finished) {
+        response.statusCode = 500 as int;
+        response.setHeader("content-type", "text/plain; charset=utf-8");
+        response.end("Internal Server Error");
+      }
+
+      this.emit("error", error);
+    }
+  }
 }
+
+const reserveEphemeralPort = (hostname: string | undefined): int => {
+  const address = resolveIPAddress(hostname);
+  const listener = new TcpListener(address, 0 as int);
+
+  listener.Start();
+
+  try {
+    const endpoint = listener.LocalEndpoint as unknown as IPEndPoint;
+    return endpoint.Port;
+  } finally {
+    listener.Stop();
+  }
+};
+
+const normalizePortNumber = (value: number): int => {
+  if (Number.isInteger(value) && value >= -2147483648 && value <= 2147483647) {
+    return value as int;
+  }
+
+  throw new RangeError(`port must be an Int32-compatible integer. Received ${String(value)}`);
+};
+
+const resolveIPAddress = (hostname: string | undefined): IPAddress => {
+  if (
+    hostname === undefined ||
+    hostname === null ||
+    hostname.length === 0 ||
+    hostname === "0.0.0.0"
+  ) {
+    return DotNetIPAddress.Any;
+  }
+
+  if (hostname === "::" || hostname === "[::]") {
+    return DotNetIPAddress.IPv6Any;
+  }
+
+  if (hostname.toLowerCase() === "localhost") {
+    return DotNetIPAddress.Loopback;
+  }
+
+  const normalized = stripIpv6Brackets(hostname);
+
+  try {
+    return DotNetIPAddress.Parse(normalized);
+  } catch {
+    const addresses = Dns.GetHostAddresses(normalized);
+    if (addresses.length === 0) {
+      throw new Error(`Unable to resolve hostname: ${normalized}`);
+    }
+    return addresses[0]!;
+  }
+};
+
+const createListener = (
+  hostname: string | undefined,
+  port: int
+): { listener: HttpListener; address: string; family: string } => {
+  const attempts = buildListenerAttempts(hostname, port);
+
+  for (const attempt of attempts) {
+    const listener = new DotNetHttpListener();
+    listener.IgnoreWriteExceptions = true;
+    for (const prefix of attempt.prefixes) {
+      listener.Prefixes.Add(prefix);
+    }
+
+    try {
+      listener.Start();
+      return {
+        listener,
+        address: attempt.address,
+        family: attempt.family,
+      };
+    } catch {
+      try {
+        listener.Close();
+      } catch {
+        // Ignore failed cleanup on unsuccessful listener attempts.
+      }
+    }
+  }
+
+  throw new Error(
+    `Unable to bind HTTP listener on port ${String(port)}${hostname !== undefined ? ` for host ${hostname}` : ""}`
+  );
+};
+
+const buildListenerAttempts = (
+  hostname: string | undefined,
+  port: int
+): { prefixes: string[]; address: string; family: string }[] => {
+  if (hostname === undefined || hostname === null || hostname.length === 0) {
+    return [
+      {
+        prefixes: [`http://*:${String(port)}/`],
+        address: "0.0.0.0",
+        family: "IPv4",
+      },
+      {
+        prefixes: [
+          `http://127.0.0.1:${String(port)}/`,
+          `http://localhost:${String(port)}/`,
+        ],
+        address: "127.0.0.1",
+        family: "IPv4",
+      },
+    ];
+  }
+
+  const normalized = stripIpv6Brackets(hostname);
+  const family = normalized.includes(":") ? "IPv6" : "IPv4";
+  const prefixHost = family === "IPv6" ? `[${normalized}]` : normalized;
+
+  return [
+    {
+      prefixes: [`http://${prefixHost}:${String(port)}/`],
+      address: normalized,
+      family,
+    },
+  ];
+};
+
+const stripIpv6Brackets = (hostname: string): string => {
+  if (hostname.startsWith("[") && hostname.endsWith("]")) {
+    return hostname.slice(1, hostname.length - 1);
+  }
+
+  return hostname;
+};

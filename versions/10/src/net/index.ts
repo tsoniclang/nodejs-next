@@ -4,6 +4,10 @@
  *
  * Baseline: nodejs-clr/src/nodejs/net/net.cs
  */
+/// <reference path="../../globals.d.ts" />
+
+import type {} from "../type-bootstrap.js";
+
 import type { int } from "@tsonic/core/types.js";
 
 export { BlockList } from "./block-list.ts";

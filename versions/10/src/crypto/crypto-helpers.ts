@@ -1,4 +1,5 @@
 import type { byte, int } from "@tsonic/core/types.js";
+import type { Byte } from "@tsonic/dotnet/System.js";
 import { MemoryStream } from "@tsonic/dotnet/System.IO.js";
 import { Guid, ReadOnlySpan } from "@tsonic/dotnet/System.js";
 import { BigInteger } from "@tsonic/dotnet/System.Numerics.js";
@@ -56,12 +57,12 @@ export const toByteArray = (buffer: Uint8Array): byte[] => {
 
 export const toReadOnlyByteSpan = (
   buffer: Uint8Array | byte[],
-): ReadOnlySpan<byte> => {
+): ReadOnlySpan<Byte> => {
   if (buffer instanceof Uint8Array) {
-    return new ReadOnlySpan<byte>(toByteArray(buffer));
+    return new ReadOnlySpan<Byte>(toByteArray(buffer) as Byte[]);
   }
 
-  return new ReadOnlySpan<byte>(buffer);
+  return new ReadOnlySpan<Byte>(buffer as Byte[]);
 };
 
 export const fromByteArray = (buffer: byte[]): Uint8Array => {

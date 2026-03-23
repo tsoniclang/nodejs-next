@@ -3,6 +3,9 @@
  *
  * Baseline: nodejs-clr/src/nodejs/querystring/querystring.cs
  */
+/// <reference path="../globals.d.ts" />
+
+import type {} from "./type-bootstrap.js";
 
 import {
   decodeURIComponent as jsDecodeURIComponent,
@@ -73,8 +76,9 @@ export const stringify = (
     const value = obj[rawKey];
 
     if (Array.isArray(value)) {
-      for (let j = 0; j < value.length; j += 1) {
-        parts.push(key + actualEq + escape(convertToString(value[j])));
+      const values = value as unknown[];
+      for (let j = 0; j < values.length; j += 1) {
+        parts.push(key + actualEq + escape(convertToString(values[j])));
       }
     } else {
       parts.push(key + actualEq + escape(convertToString(value)));
@@ -141,9 +145,9 @@ export const parse = (
     const existing = result[key];
     if (existing !== undefined) {
       if (Array.isArray(existing)) {
-        existing.push(value);
+        (existing as string[]).push(value);
       } else {
-        result[key] = [existing, value];
+        result[key] = [existing as string, value];
       }
     } else {
       result[key] = value;

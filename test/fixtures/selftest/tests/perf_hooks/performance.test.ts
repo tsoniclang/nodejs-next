@@ -1,10 +1,11 @@
 import { attributes as A } from "@tsonic/core/lang.js";
 import { int } from "@tsonic/core/types.js";
 import { Thread } from "@tsonic/dotnet/System.Threading.js";
-import { Assert, FactAttribute } from "xunit-types/Xunit.js";
+import { Assert, CollectionAttribute, FactAttribute } from "xunit-types/Xunit.js";
 
 import { performance, PerformanceMark, PerformanceMeasure } from "@tsonic/nodejs/perf_hooks.js";
 import type { MeasureOptions } from "@tsonic/nodejs/perf_hooks.js";
+import { assertThrows } from "./helpers.ts";
 
 export class PerformanceTests {
   public now_should_return_positive_number(): void {
@@ -31,6 +32,14 @@ export class PerformanceTests {
     Assert.Equal("mark", entry.entryType);
     Assert.Equal(0, entry.duration);
     Assert.True(entry.startTime > 0);
+  }
+
+  public mark_with_null_name_should_throw(): void {
+    assertThrows(() => performance.mark(null!));
+  }
+
+  public mark_with_empty_name_should_throw(): void {
+    assertThrows(() => performance.mark(""));
   }
 
   public mark_with_detail_should_store_detail(): void {
@@ -69,6 +78,14 @@ export class PerformanceTests {
     Assert.True(entry.duration < 200);
   }
 
+  public measure_with_null_name_should_throw(): void {
+    assertThrows(() => performance.measure(null!));
+  }
+
+  public measure_with_empty_name_should_throw(): void {
+    assertThrows(() => performance.measure(""));
+  }
+
   public measure_with_missing_start_mark_should_use_zero(): void {
     performance.clearMarks();
     performance.clearMeasures();
@@ -77,6 +94,20 @@ export class PerformanceTests {
     const entry = performance.measure("test", "nonexistent-start", "end");
 
     Assert.Equal(0, entry.startTime);
+  }
+
+  public measure_with_missing_end_mark_should_use_now(): void {
+    performance.clearMarks();
+    performance.clearMeasures();
+
+    const startMark = performance.mark("start");
+    Thread.Sleep(10 as int);
+    const beforeMeasure = performance.now();
+    const entry = performance.measure("test", "start", "nonexistent-end");
+
+    Assert.True(entry.startTime === startMark.startTime);
+    Assert.True(entry.duration > 10);
+    Assert.True(entry.startTime + entry.duration <= beforeMeasure + 5);
   }
 
   public measure_with_no_marks_should_work_with_current_time(): void {
@@ -154,6 +185,10 @@ export class PerformanceTests {
     Assert.True(filtered.every((e) => e.name === "test"));
   }
 
+  public get_entries_by_name_with_null_name_should_throw(): void {
+    assertThrows(() => performance.getEntriesByName(null!));
+  }
+
   public get_entries_by_name_with_type_should_filter_by_both(): void {
     performance.clearMarks();
     performance.clearMeasures();
@@ -183,6 +218,10 @@ export class PerformanceTests {
     Assert.True(marks.every((e) => e.entryType === "mark"));
     Assert.True(measures.length >= 1);
     Assert.True(measures.every((e) => e.entryType === "measure"));
+  }
+
+  public get_entries_by_type_with_null_type_should_throw(): void {
+    assertThrows(() => performance.getEntriesByType(null!));
   }
 
   public clear_marks_should_remove_all_marks(): void {
@@ -236,6 +275,8 @@ export class PerformanceTests {
   }
 }
 
+A.on(PerformanceTests).type.add(CollectionAttribute, "perf_hooks");
+
 A.on(PerformanceTests)
   .method((t) => t.now_should_return_positive_number)
   .add(FactAttribute);
@@ -244,6 +285,12 @@ A.on(PerformanceTests)
   .add(FactAttribute);
 A.on(PerformanceTests)
   .method((t) => t.mark_should_create_mark)
+  .add(FactAttribute);
+A.on(PerformanceTests)
+  .method((t) => t.mark_with_null_name_should_throw)
+  .add(FactAttribute);
+A.on(PerformanceTests)
+  .method((t) => t.mark_with_empty_name_should_throw)
   .add(FactAttribute);
 A.on(PerformanceTests)
   .method((t) => t.mark_with_detail_should_store_detail)
@@ -255,7 +302,16 @@ A.on(PerformanceTests)
   .method((t) => t.measure_between_marks_should_calculate_duration)
   .add(FactAttribute);
 A.on(PerformanceTests)
+  .method((t) => t.measure_with_null_name_should_throw)
+  .add(FactAttribute);
+A.on(PerformanceTests)
+  .method((t) => t.measure_with_empty_name_should_throw)
+  .add(FactAttribute);
+A.on(PerformanceTests)
   .method((t) => t.measure_with_missing_start_mark_should_use_zero)
+  .add(FactAttribute);
+A.on(PerformanceTests)
+  .method((t) => t.measure_with_missing_end_mark_should_use_now)
   .add(FactAttribute);
 A.on(PerformanceTests)
   .method((t) => t.measure_with_no_marks_should_work_with_current_time)
@@ -273,10 +329,16 @@ A.on(PerformanceTests)
   .method((t) => t.get_entries_by_name_should_filter_by_name)
   .add(FactAttribute);
 A.on(PerformanceTests)
+  .method((t) => t.get_entries_by_name_with_null_name_should_throw)
+  .add(FactAttribute);
+A.on(PerformanceTests)
   .method((t) => t.get_entries_by_name_with_type_should_filter_by_both)
   .add(FactAttribute);
 A.on(PerformanceTests)
   .method((t) => t.get_entries_by_type_should_filter_by_type)
+  .add(FactAttribute);
+A.on(PerformanceTests)
+  .method((t) => t.get_entries_by_type_with_null_type_should_throw)
   .add(FactAttribute);
 A.on(PerformanceTests)
   .method((t) => t.clear_marks_should_remove_all_marks)

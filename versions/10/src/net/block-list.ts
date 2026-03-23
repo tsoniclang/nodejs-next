@@ -171,13 +171,15 @@ export class BlockList {
       return true;
     }
 
-    for (const range of this.blockedRanges) {
+    for (let index = 0; index < this.blockedRanges.length; index += 1) {
+      const range = this.blockedRanges[index]!;
       if (range.type === type && isInRange(address, range.start, range.end)) {
         return true;
       }
     }
 
-    for (const subnet of this.blockedSubnets) {
+    for (let index = 0; index < this.blockedSubnets.length; index += 1) {
+      const subnet = this.blockedSubnets[index]!;
       if (
         subnet.type === type &&
         isInSubnet(address, subnet.network, subnet.prefix)
@@ -197,10 +199,12 @@ export class BlockList {
     for (const addr of this.blockedAddresses) {
       rules.push(addr);
     }
-    for (const range of this.blockedRanges) {
+    for (let index = 0; index < this.blockedRanges.length; index += 1) {
+      const range = this.blockedRanges[index]!;
       rules.push(`${range.start}-${range.end}`);
     }
-    for (const subnet of this.blockedSubnets) {
+    for (let index = 0; index < this.blockedSubnets.length; index += 1) {
+      const subnet = this.blockedSubnets[index]!;
       rules.push(`${subnet.network}/${String(subnet.prefix)}`);
     }
     return rules;

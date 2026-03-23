@@ -20,12 +20,13 @@ export class HttpSurfaceContractTests {
     const response = new ServerResponse();
     const incoming = new IncomingMessage();
 
-    const timeout: int = server.timeout;
-    const headersTimeout: int = server.headersTimeout;
-    const requestTimeout: int = server.requestTimeout;
-    const keepAliveTimeout: int = server.keepAliveTimeout;
-    const statusCode: int = response.statusCode;
-    const incomingStatusCode: int | null = incoming.statusCode;
+    const timeout: number = server.timeout;
+    const headersTimeout: number = server.headersTimeout;
+    const requestTimeout: number = server.requestTimeout;
+    const keepAliveTimeout: number = server.keepAliveTimeout;
+    const statusCode: number = response.statusCode;
+    const incomingStatusCode: number | null = incoming.statusCode;
+    const address = server.address();
 
     server.timeout = timeout;
     server.headersTimeout = headersTimeout;
@@ -35,6 +36,7 @@ export class HttpSurfaceContractTests {
 
     // Ensure the incomingStatusCode binding is used
     Assert.Null(incomingStatusCode);
+    Assert.Null(address);
   }
 
   public integer_backed_methods_compile_against_exact_numeric_contracts(): void {
@@ -43,13 +45,20 @@ export class HttpSurfaceContractTests {
     const incoming = new IncomingMessage();
 
     const listenResult: Server = server.listen(
-      80 as int,
+      0,
       "127.0.0.1",
-      128 as int,
+      128,
       () => undefined
     );
     Assert.True(listenResult.listening);
     listenResult.close();
+
+    const listenPath =
+      server.listen as unknown as (
+        path: string,
+        callback?: (() => void) | null
+      ) => Server;
+    Assert.NotNull(listenPath);
 
     const serverTimeoutResult: Server = server.setTimeout(
       1000 as int,

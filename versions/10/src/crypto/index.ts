@@ -3,6 +3,10 @@
  *
  * Baseline: nodejs-clr/src/nodejs/crypto/crypto.cs
  */
+/// <reference path="../../globals.d.ts" />
+
+import type {} from "../type-bootstrap.js";
+
 import type { int, out } from "@tsonic/core/types.js";
 import {
   DSA,
@@ -455,27 +459,27 @@ export const createDiffieHellman = (
     return createDiffieHellmanFromLength(primeOrLength, 2);
   }
 
-  if (primeOrLength instanceof Uint8Array) {
-    const primeBytes: Uint8Array = primeOrLength;
-    if (generatorOrEncoding instanceof Uint8Array) {
-      const generatorBytes: Uint8Array = generatorOrEncoding;
-      return createDiffieHellmanFromBytes(primeBytes, generatorBytes);
-    }
-    if (typeof generatorOrEncoding === "number") {
-      return createDiffieHellmanFromBytes(
-        primeBytes,
-        new Uint8Array([generatorOrEncoding])
-      );
-    }
-    return createDiffieHellmanFromBytes(primeBytes, new Uint8Array([2]));
+  if (typeof primeOrLength === "string") {
+    return createDiffieHellmanFromString(
+      primeOrLength,
+      typeof generatorOrEncoding === "string" ? generatorOrEncoding : "base64",
+      generatorOrEncodingStr,
+      generatorEncoding,
+    );
   }
 
-  return createDiffieHellmanFromString(
-    primeOrLength,
-    typeof generatorOrEncoding === "string" ? generatorOrEncoding : "base64",
-    generatorOrEncodingStr,
-    generatorEncoding,
-  );
+  const primeBytes: Uint8Array = primeOrLength;
+  if (generatorOrEncoding instanceof Uint8Array) {
+    const generatorBytes: Uint8Array = generatorOrEncoding;
+    return createDiffieHellmanFromBytes(primeBytes, generatorBytes);
+  }
+  if (typeof generatorOrEncoding === "number") {
+    return createDiffieHellmanFromBytes(
+      primeBytes,
+      new Uint8Array([generatorOrEncoding])
+    );
+  }
+  return createDiffieHellmanFromBytes(primeBytes, new Uint8Array([2]));
 };
 
 /**

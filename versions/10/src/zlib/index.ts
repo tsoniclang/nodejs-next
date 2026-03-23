@@ -3,6 +3,10 @@
  *
  * Baseline: nodejs-clr/src/nodejs/zlib/
  */
+/// <reference path="../../globals.d.ts" />
+
+import type {} from "../type-bootstrap.js";
+
 export type { BrotliOptions } from "./brotli-options.ts";
 export type { ZlibOptions } from "./zlib-options.ts";
 

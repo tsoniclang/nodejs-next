@@ -1,3 +1,7 @@
+/// <reference path="../globals.d.ts" />
+
+import type {} from "./type-bootstrap.js";
+
 import type { int, long, out } from "@tsonic/core/types.js";
 import { Environment } from "@tsonic/dotnet/System.js";
 import { ConcurrentQueue } from "@tsonic/dotnet/System.Collections.Concurrent.js";

@@ -3,6 +3,9 @@
  *
  * Baseline: nodejs-clr/src/nodejs/perf_hooks/
  */
+/// <reference path="../../globals.d.ts" />
+
+import type {} from "../type-bootstrap.js";
 
 export {
   PerformanceEntry,

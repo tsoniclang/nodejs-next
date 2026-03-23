@@ -3,8 +3,16 @@
  *
  * Baseline: nodejs-clr/src/nodejs/http/http.cs
  */
+/// <reference path="../../globals.d.ts" />
+
+import type {} from "../type-bootstrap.js";
 
 import type { int } from "@tsonic/core/types.js";
+import type { ClientRequest as ClientRequestType } from "./client-request.ts";
+import type { IncomingMessage as IncomingMessageType } from "./incoming-message.ts";
+import type { RequestOptions as RequestOptionsType } from "./request-options.ts";
+import type { Server as ServerType } from "./server.ts";
+import type { ServerResponse as ServerResponseType } from "./server-response.ts";
 
 export { ClientRequest } from "./client-request.ts";
 export { IncomingMessage } from "./incoming-message.ts";
@@ -13,10 +21,8 @@ export { Server, AddressInfo } from "./server.ts";
 export { ServerResponse } from "./server-response.ts";
 
 import { ClientRequest } from "./client-request.ts";
-import { IncomingMessage } from "./incoming-message.ts";
 import { RequestOptions } from "./request-options.ts";
 import { Server } from "./server.ts";
-import { ServerResponse } from "./server-response.ts";
 
 /**
  * Maximum allowed size of HTTP headers in bytes.
@@ -30,8 +36,8 @@ export const maxHeaderSize: int = (16 * 1024) as int;
  * @returns A new Server instance.
  */
 export const createServer = (
-  requestListener?: ((req: IncomingMessage, res: ServerResponse) => void) | null
-): Server => {
+  requestListener?: ((req: IncomingMessageType, res: ServerResponseType) => void) | null
+): ServerType => {
   return new Server(requestListener);
 };
 
@@ -42,9 +48,9 @@ export const createServer = (
  * @returns A ClientRequest instance.
  */
 export const request = (
-  options: RequestOptions,
-  callback?: ((res: IncomingMessage) => void) | null
-): ClientRequest => {
+  options: RequestOptionsType,
+  callback?: ((res: IncomingMessageType) => void) | null
+): ClientRequestType => {
   return new ClientRequest(options, callback);
 };
 
@@ -56,8 +62,8 @@ export const request = (
  */
 export const requestFromUrl = (
   url: string,
-  callback?: ((res: IncomingMessage) => void) | null
-): ClientRequest => {
+  callback?: ((res: IncomingMessageType) => void) | null
+): ClientRequestType => {
   // TODO: Parse the URL properly (requires URL class integration)
   const options = new RequestOptions();
   options.path = url;
@@ -74,8 +80,8 @@ export const requestFromUrl = (
  */
 export const get = (
   url: string,
-  callback?: ((res: IncomingMessage) => void) | null
-): ClientRequest => {
+  callback?: ((res: IncomingMessageType) => void) | null
+): ClientRequestType => {
   const req = requestFromUrl(url, callback);
   req.end();
   return req;
@@ -89,9 +95,9 @@ export const get = (
  * @returns A ClientRequest instance.
  */
 export const getWithOptions = (
-  options: RequestOptions,
-  callback?: ((res: IncomingMessage) => void) | null
-): ClientRequest => {
+  options: RequestOptionsType,
+  callback?: ((res: IncomingMessageType) => void) | null
+): ClientRequestType => {
   const req = request(options, callback);
   req.end();
   return req;

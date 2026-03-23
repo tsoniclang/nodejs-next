@@ -1,7 +1,7 @@
 import { attributes as A } from "@tsonic/core/lang.js";
 import { int } from "@tsonic/core/types.js";
 import { Thread } from "@tsonic/dotnet/System.Threading.js";
-import { Assert, FactAttribute } from "xunit-types/Xunit.js";
+import { Assert, CollectionAttribute, FactAttribute } from "xunit-types/Xunit.js";
 
 import {
   performance,
@@ -11,8 +11,37 @@ import {
   PerformanceObserver,
   PerformanceObserverEntryList,
 } from "@tsonic/nodejs/perf_hooks.js";
+import { assertThrows } from "./helpers.ts";
 
 export class PerformanceObserverTests {
+  public constructor_with_null_callback_should_throw(): void {
+    assertThrows(() => new PerformanceObserver(null!));
+  }
+
+  public observe_with_null_options_should_throw(): void {
+    const observer = new PerformanceObserver((_list, _obs) => {
+      return;
+    });
+
+    assertThrows(() => observer.observe(null!));
+  }
+
+  public observe_with_empty_entry_types_should_throw(): void {
+    const observer = new PerformanceObserver((_list, _obs) => {
+      return;
+    });
+
+    assertThrows(() => observer.observe({ entryTypes: [] }));
+  }
+
+  public observe_with_null_entry_types_should_throw(): void {
+    const observer = new PerformanceObserver((_list, _obs) => {
+      return;
+    });
+
+    assertThrows(() => observer.observe({ entryTypes: null! }));
+  }
+
   public observer_should_receive_mark_entries(): void {
     performance.clearMarks();
 
@@ -211,6 +240,11 @@ export class PerformanceObserverTests {
     Assert.Equal("mark", result[0].entryType);
   }
 
+  public entry_list_get_entries_by_name_with_null_name_should_throw(): void {
+    const list = new PerformanceObserverEntryList([]);
+    assertThrows(() => list.getEntriesByName(null!));
+  }
+
   public entry_list_get_entries_by_type_should_filter(): void {
     const entries: PerformanceEntry[] = [
       new PerformanceMark("mark1", 100.0),
@@ -227,6 +261,11 @@ export class PerformanceObserverTests {
     Assert.True(marks.every((e) => e.entryType === "mark"));
     Assert.Equal(1, measures.length);
     Assert.Equal("measure", measures[0].entryType);
+  }
+
+  public entry_list_get_entries_by_type_with_null_type_should_throw(): void {
+    const list = new PerformanceObserverEntryList([]);
+    assertThrows(() => list.getEntriesByType(null!));
   }
 
   public multiple_observers_should_all_receive_notifications(): void {
@@ -263,6 +302,20 @@ export class PerformanceObserverTests {
   }
 }
 
+A.on(PerformanceObserverTests).type.add(CollectionAttribute, "perf_hooks");
+
+A.on(PerformanceObserverTests)
+  .method((t) => t.constructor_with_null_callback_should_throw)
+  .add(FactAttribute);
+A.on(PerformanceObserverTests)
+  .method((t) => t.observe_with_null_options_should_throw)
+  .add(FactAttribute);
+A.on(PerformanceObserverTests)
+  .method((t) => t.observe_with_empty_entry_types_should_throw)
+  .add(FactAttribute);
+A.on(PerformanceObserverTests)
+  .method((t) => t.observe_with_null_entry_types_should_throw)
+  .add(FactAttribute);
 A.on(PerformanceObserverTests)
   .method((t) => t.observer_should_receive_mark_entries)
   .add(FactAttribute);
@@ -297,7 +350,13 @@ A.on(PerformanceObserverTests)
   .method((t) => t.entry_list_get_entries_by_name_with_type_should_filter)
   .add(FactAttribute);
 A.on(PerformanceObserverTests)
+  .method((t) => t.entry_list_get_entries_by_name_with_null_name_should_throw)
+  .add(FactAttribute);
+A.on(PerformanceObserverTests)
   .method((t) => t.entry_list_get_entries_by_type_should_filter)
+  .add(FactAttribute);
+A.on(PerformanceObserverTests)
+  .method((t) => t.entry_list_get_entries_by_type_with_null_type_should_throw)
   .add(FactAttribute);
 A.on(PerformanceObserverTests)
   .method((t) => t.multiple_observers_should_all_receive_notifications)
