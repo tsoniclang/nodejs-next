@@ -6,6 +6,7 @@
  * Baseline: nodejs-clr/src/nodejs/readline/Interface.cs
  */
 import { EventEmitter } from "../events-module.ts";
+import type { int } from "@tsonic/core/types.js";
 import type { Readable } from "../stream/readable.ts";
 import type { Writable } from "../stream/writable.ts";
 import { InterfaceOptions, CursorPosition } from "./interface-options.ts";
@@ -16,15 +17,15 @@ export class Interface extends EventEmitter {
   private readonly _terminal: boolean;
   private _prompt: string = "> ";
   private readonly _history: string[] = [];
-  private readonly _historySize: number;
+  private readonly _historySize: int;
   private readonly _removeHistoryDuplicates: boolean;
   private _line: string = "";
-  private _cursor: number = 0;
+  private _cursor: int = 0;
   private _closed: boolean = false;
   private _paused: boolean = false;
   private readonly _dataListener: ((...args: unknown[]) => void) | undefined;
   private readonly _endListener: ((...args: unknown[]) => void) | undefined;
-  private _historyIndex: number = -1;
+  private _historyIndex: int = -1;
   private _savedLine: string = "";
 
   /** Current line being processed. */
@@ -33,7 +34,7 @@ export class Interface extends EventEmitter {
   }
 
   /** Cursor position in current line. */
-  public get cursor(): number {
+  public get cursor(): int {
     return this._cursor;
   }
 
@@ -65,7 +66,7 @@ export class Interface extends EventEmitter {
         }
       };
 
-      const endListener = (): void => {
+      const endListener = (..._args: unknown[]): void => {
         if (!this._closed) {
           this.close();
         }
@@ -146,7 +147,7 @@ export class Interface extends EventEmitter {
     return new Promise<string>((resolve) => {
       const lineListener = (...args: unknown[]): void => {
         if (args.length > 0 && typeof args[0] === "string") {
-          resolve(args[0]);
+          resolve(String(args[0]));
         }
       };
 
@@ -260,7 +261,7 @@ export class Interface extends EventEmitter {
     // Assume 80 column terminal
     const pos = new CursorPosition();
     pos.cols = totalLength % 80;
-    pos.rows = Math.floor(totalLength / 80);
+    pos.rows = (totalLength / 80) | 0;
     return pos;
   }
 
@@ -478,9 +479,11 @@ export class Interface extends EventEmitter {
           filtered.push(h);
         }
       }
-      this._history.length = 0;
-      for (const h of filtered) {
-        this._history.push(h);
+      while (this._history.length > 0) {
+        this._history.pop();
+      }
+      for (let index = 0; index < filtered.length; index += 1) {
+        this._history.push(filtered[index]!);
       }
     }
 

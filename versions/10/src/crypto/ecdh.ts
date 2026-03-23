@@ -1,3 +1,39 @@
+import type { int, out } from "@tsonic/core/types.js";
+import { ECDiffieHellman } from "@tsonic/dotnet/System.Security.Cryptography.js";
+import {
+  curveFromName,
+  decodeInputBytes,
+  encodeOutputBytes,
+  encodeOutputString,
+  fromByteArray,
+  toReadOnlyByteSpan,
+} from "./crypto-helpers.ts";
+
+function toEcdhPublicKeyBytes(
+  otherPublicKey: string,
+  inputEncoding?: string,
+): Uint8Array;
+function toEcdhPublicKeyBytes(
+  otherPublicKey: Uint8Array,
+): Uint8Array;
+function toEcdhPublicKeyBytes(
+  otherPublicKey: string | Uint8Array,
+  inputEncoding?: string,
+): Uint8Array {
+  if (typeof otherPublicKey === "string") {
+    return decodeInputBytes(otherPublicKey, inputEncoding ?? "base64");
+  }
+
+  return otherPublicKey;
+}
+
+const encodeEcdhSecret = (
+  secret: Uint8Array,
+  outputEncoding?: string,
+): string => {
+  return encodeOutputString(secret, outputEncoding ?? "base64");
+};
+
 /**
  * Node.js crypto ECDH class.
  *
@@ -9,31 +45,26 @@
  */
 export class ECDH {
   private readonly _curveName: string;
-  private _publicKey: Uint8Array | null = null;
-  private _privateKey: Uint8Array | null = null;
+  private _ecdh: ECDiffieHellman;
 
   public constructor(curveName: string) {
     this._curveName = curveName;
-    // TODO: validate curve name
-    void this._curveName;
+    this._ecdh = ECDiffieHellman.Create(curveFromName(curveName));
   }
 
   /**
    * Generates private and public EC Diffie-Hellman key values.
    */
-  public generateKeys(encoding?: string, _format?: string): string;
-  public generateKeys(): Uint8Array;
+  public generateKeys(encoding?: undefined, _format?: string): Uint8Array;
+  public generateKeys(encoding: string, _format?: string): string;
   public generateKeys(encoding?: string, _format?: string): string | Uint8Array {
-    // TODO: actual EC key generation
-    this._publicKey = new Uint8Array(65);
-    this._privateKey = new Uint8Array(32);
+    const publicKey = this.getPublicKey();
 
     if (typeof encoding === "string") {
-      // TODO: return encoded public key
-      return "";
+      return encodeOutputBytes(publicKey, encoding) as string;
     }
 
-    return this._publicKey;
+    return publicKey;
   }
 
   /**
@@ -44,56 +75,69 @@ export class ECDH {
     inputEncoding?: string,
     outputEncoding?: string
   ): string;
+  public computeSecret(otherPublicKey: Uint8Array, outputEncoding?: undefined): Uint8Array;
   public computeSecret(otherPublicKey: Uint8Array, outputEncoding: string): string;
-  public computeSecret(otherPublicKey: Uint8Array): Uint8Array;
   public computeSecret(
     otherPublicKey: string | Uint8Array,
-    _inputOrOutputEncoding?: string,
-    _outputEncoding?: string
+    inputOrOutputEncoding?: string,
+    outputEncoding?: string
   ): string | Uint8Array {
-    // TODO: actual EC shared secret computation
-    void otherPublicKey;
-    if (typeof otherPublicKey === "string" || typeof _inputOrOutputEncoding === "string") {
-      return "";
+    let publicKeyBytes: Uint8Array;
+    if (typeof otherPublicKey === "string") {
+      publicKeyBytes = toEcdhPublicKeyBytes(
+        otherPublicKey,
+        inputOrOutputEncoding,
+      );
+    } else {
+      publicKeyBytes = toEcdhPublicKeyBytes(otherPublicKey);
+    }
+    const other = ECDiffieHellman.Create(curveFromName(this._curveName));
+    other.ImportSubjectPublicKeyInfo(
+      toReadOnlyByteSpan(publicKeyBytes),
+      0 as out<int>,
+    );
+    const secret = fromByteArray(this._ecdh.DeriveKeyMaterial(other.PublicKey));
+    other.Dispose();
+
+    if (typeof otherPublicKey === "string") {
+      return encodeEcdhSecret(secret, outputEncoding);
     }
 
-    return new Uint8Array(32);
+    if (typeof inputOrOutputEncoding === "string") {
+      return encodeOutputString(secret, inputOrOutputEncoding);
+    }
+
+    return secret;
   }
 
   /**
    * Returns the EC Diffie-Hellman public key.
    */
-  public getPublicKey(encoding?: string, _format?: string): string;
-  public getPublicKey(): Uint8Array;
+  public getPublicKey(encoding?: undefined, _format?: string): Uint8Array;
+  public getPublicKey(encoding: string, _format?: string): string;
   public getPublicKey(encoding?: string, _format?: string): string | Uint8Array {
-    if (this._publicKey === null) {
-      throw new Error("Must call generateKeys() first");
-    }
+    const publicKey = fromByteArray(this._ecdh.PublicKey.ExportSubjectPublicKeyInfo());
 
     if (typeof encoding === "string") {
-      // TODO: return encoded public key
-      return "";
+      return encodeOutputBytes(publicKey, encoding) as string;
     }
 
-    return this._publicKey;
+    return publicKey;
   }
 
   /**
    * Returns the EC Diffie-Hellman private key.
    */
+  public getPrivateKey(encoding?: undefined): Uint8Array;
   public getPrivateKey(encoding: string): string;
-  public getPrivateKey(): Uint8Array;
   public getPrivateKey(encoding?: string): string | Uint8Array {
-    if (this._privateKey === null) {
-      throw new Error("Must call generateKeys() first");
-    }
+    const privateKey = fromByteArray(this._ecdh.ExportECPrivateKey());
 
     if (typeof encoding === "string") {
-      // TODO: return encoded private key
-      return "";
+      return encodeOutputBytes(privateKey, encoding) as string;
     }
 
-    return this._privateKey;
+    return privateKey;
   }
 
   /**
@@ -110,12 +154,13 @@ export class ECDH {
    */
   public setPrivateKey(privateKey: string, encoding?: string): void;
   public setPrivateKey(privateKey: Uint8Array): void;
-  public setPrivateKey(privateKey: string | Uint8Array, _encoding?: string): void {
-    if (typeof privateKey === "string") {
-      // TODO: decode and import
-    } else {
-      // TODO: import EC private key
-      this._privateKey = privateKey;
-    }
+  public setPrivateKey(privateKey: string | Uint8Array, encoding?: string): void {
+    this._ecdh.Dispose();
+    this._ecdh = ECDiffieHellman.Create(curveFromName(this._curveName));
+    const bytes =
+      typeof privateKey === "string"
+        ? decodeInputBytes(privateKey, encoding ?? "base64")
+        : privateKey;
+    this._ecdh.ImportECPrivateKey(toReadOnlyByteSpan(bytes), 0 as out<int>);
   }
 }

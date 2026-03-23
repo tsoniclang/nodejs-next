@@ -1,3 +1,10 @@
+import {
+  computeHmacBytes,
+  concatBytes,
+  decodeInputBytes,
+  encodeOutputBytes,
+} from "./crypto-helpers.ts";
+
 /**
  * Node.js crypto Hmac class.
  *
@@ -10,6 +17,7 @@
 export class Hmac {
   private readonly _algorithm: string;
   private readonly _key: Uint8Array;
+  private readonly _chunks: Uint8Array[] = [];
   private _finalized: boolean = false;
 
   public constructor(algorithm: string, key: Uint8Array) {
@@ -20,15 +28,14 @@ export class Hmac {
   /**
    * Updates the Hmac content with the given data.
    */
-  public update(data: string, _inputEncoding?: string): Hmac;
+  public update(data: string, inputEncoding?: string): Hmac;
   public update(data: Uint8Array): Hmac;
-  public update(data: string | Uint8Array, _inputEncoding?: string): Hmac {
+  public update(data: string | Uint8Array, inputEncoding?: string): Hmac {
     if (this._finalized) {
       throw new Error("Digest already called");
     }
 
-    // TODO: actual HMAC update with data
-    void data;
+    this._chunks.push(decodeInputBytes(data, inputEncoding ?? "utf8"));
     return this;
   }
 
@@ -43,15 +50,16 @@ export class Hmac {
     }
 
     this._finalized = true;
+    const bytes = computeHmacBytes(
+      this._algorithm,
+      this._key,
+      concatBytes(...this._chunks),
+    );
 
     if (typeof encoding === "string") {
-      // TODO: actual HMAC computation returning encoded string
-      void this._algorithm;
-      void this._key;
-      return "";
+      return encodeOutputBytes(bytes, encoding) as string;
     }
 
-    // TODO: actual HMAC computation returning raw bytes
-    return new Uint8Array(0);
+    return bytes;
   }
 }

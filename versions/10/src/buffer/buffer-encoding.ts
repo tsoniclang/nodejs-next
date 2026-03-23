@@ -5,6 +5,10 @@
  * Baseline: nodejs-clr/src/nodejs/buffer/Buffer.encoding.cs
  */
 
+import { Math as JSMath } from "@tsonic/js/index.js";
+import type { byte, int } from "@tsonic/core/types.js";
+import { UTF8Encoding } from "@tsonic/dotnet/System.Text.js";
+
 export type BufferEncoding =
   | "utf8"
   | "utf-8"
@@ -19,11 +23,57 @@ export type BufferEncoding =
   | "base64url"
   | "hex";
 
+const utf8 = new UTF8Encoding();
+
+const HEX_DIGITS = "0123456789abcdef";
+
+const toUint8Array = (bytes: byte[]): Uint8Array => {
+  const result = new Uint8Array(bytes.length);
+  for (let index = 0; index < bytes.length; index += 1) {
+    result[index] = bytes[index]!;
+  }
+  return result;
+};
+
+const toByteArray = (bytes: Uint8Array): byte[] => {
+  const result: byte[] = [];
+  for (let index = 0; index < bytes.length; index += 1) {
+    result.push(bytes[index]! as byte);
+  }
+  return result;
+};
+
+const copyRange = (
+  bytes: Uint8Array,
+  start: int,
+  end: int,
+): Uint8Array => {
+  const safeStart = start < 0 ? 0 : start;
+  const safeEnd = end < safeStart ? safeStart : end;
+  const result = new Uint8Array((safeEnd - safeStart) as int);
+  for (let index = 0; index < result.length; index += 1) {
+    result[index] = bytes[safeStart + index]!;
+  }
+  return result;
+};
+
+const stripCharacters = (value: string, shouldStrip: (char: string) => boolean): string => {
+  let result = "";
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value.charAt(index);
+    if (!shouldStrip(char)) {
+      result += char;
+    }
+  }
+  return result;
+};
+
 /**
  * Normalizes encoding name to a canonical lowercase form with no hyphens/underscores.
  */
 export const normalizeEncoding = (encoding: string): string => {
-  return encoding.toLowerCase().replace(/-/g, "").replace(/_/g, "");
+  const lowered = encoding.toLowerCase();
+  return stripCharacters(lowered, (char) => char === "-" || char === "_");
 };
 
 /**
@@ -39,7 +89,7 @@ export const stringToBytes = (
 
   switch (norm) {
     case "utf8":
-      return new TextEncoder().encode(str);
+      return toUint8Array(utf8.GetBytes(str));
 
     case "ascii": {
       const out = new Uint8Array(str.length);
@@ -80,7 +130,7 @@ export const stringToBytes = (
 
     default:
       // Fall back to utf-8
-      return new TextEncoder().encode(str);
+      return toUint8Array(utf8.GetBytes(str));
   }
 };
 
@@ -90,15 +140,15 @@ export const stringToBytes = (
 export const bytesToString = (
   bytes: Uint8Array,
   encoding: string,
-  start: number,
-  end: number,
+  start: int,
+  end: int,
 ): string => {
   const norm = normalizeEncoding(encoding);
-  const slice = bytes.subarray(start, end);
+  const slice = copyRange(bytes, start, end);
 
   switch (norm) {
     case "utf8":
-      return new TextDecoder("utf-8", { fatal: false }).decode(slice);
+      return utf8.GetString(toByteArray(slice));
 
     case "ascii": {
       let result = "";
@@ -136,7 +186,7 @@ export const bytesToString = (
       return base64ToBase64Url(bytesToBase64(slice));
 
     default:
-      return new TextDecoder("utf-8", { fatal: false }).decode(slice);
+      return utf8.GetString(toByteArray(slice));
   }
 };
 
@@ -151,7 +201,7 @@ export const byteLengthOfString = (
 
   switch (norm) {
     case "utf8":
-      return new TextEncoder().encode(str).length;
+      return utf8.GetBytes(str).length;
 
     case "ascii":
     case "latin1":
@@ -163,7 +213,7 @@ export const byteLengthOfString = (
       return str.length * 2;
 
     case "hex":
-      return Math.floor(str.length / 2);
+      return JSMath.floor(str.length / 2);
 
     case "base64":
     case "base64url": {
@@ -173,33 +223,35 @@ export const byteLengthOfString = (
         stripped = base64UrlToBase64(stripped);
       }
       const pad = stripped.endsWith("==") ? 2 : stripped.endsWith("=") ? 1 : 0;
-      return Math.floor((stripped.length * 3) / 4) - pad;
+      return JSMath.floor((stripped.length * 3) / 4) - pad;
     }
 
     default:
-      return new TextEncoder().encode(str).length;
+      return utf8.GetBytes(str).length;
   }
 };
 
 // ---- hex helpers ----
 
 export const hexToBytes = (hex: string): Uint8Array => {
-  const cleaned = hex.replace(/\s/g, "");
-  const bytes = new Uint8Array(Math.floor(cleaned.length / 2));
+  const cleaned = stripCharacters(hex, (char) => char === " " || char === "\n" || char === "\r" || char === "\t");
+  const bytes = new Uint8Array(cleaned.length >> 1);
   for (let i = 0; i < bytes.length; i += 1) {
-    bytes[i] = parseInt(cleaned.substring(i * 2, i * 2 + 2), 16);
+    bytes[i] = parseInt(cleaned.substring(i * 2, i * 2 + 2), 16) ?? 0;
   }
   return bytes;
 };
 
 export const bytesToHex = (
   bytes: Uint8Array,
-  start: number,
-  end: number,
+  start: int,
+  end: int,
 ): string => {
   let hex = "";
   for (let i = start; i < end; i += 1) {
-    hex += (bytes[i]! < 16 ? "0" : "") + bytes[i]!.toString(16);
+    const value = bytes[i]!;
+    hex += HEX_DIGITS.charAt((value >> 4) & 0x0f);
+    hex += HEX_DIGITS.charAt(value & 0x0f);
   }
   return hex;
 };
@@ -212,9 +264,9 @@ const BASE64_CHARS =
 export const bytesToBase64 = (bytes: Uint8Array): string => {
   let result = "";
   for (let i = 0; i < bytes.length; i += 3) {
-    const b0 = bytes[i]!;
-    const b1 = i + 1 < bytes.length ? bytes[i + 1]! : 0;
-    const b2 = i + 2 < bytes.length ? bytes[i + 2]! : 0;
+    const b0 = bytes[i]! as byte;
+    const b1 = i + 1 < bytes.length ? (bytes[i + 1]! as byte) : (0 as byte);
+    const b2 = i + 2 < bytes.length ? (bytes[i + 2]! as byte) : (0 as byte);
 
     result += BASE64_CHARS[(b0 >> 2) & 0x3f];
     result += BASE64_CHARS[((b0 << 4) | (b1 >> 4)) & 0x3f];
@@ -224,23 +276,31 @@ export const bytesToBase64 = (bytes: Uint8Array): string => {
   return result;
 };
 
-const BASE64_LOOKUP: Record<string, number> = {};
+const BASE64_LOOKUP: Record<string, int> = {};
 for (let i = 0; i < BASE64_CHARS.length; i += 1) {
-  BASE64_LOOKUP[BASE64_CHARS[i]!] = i;
+  BASE64_LOOKUP[BASE64_CHARS[i]!] = i as int;
 }
 
 export const base64ToBytes = (base64: string): Uint8Array => {
-  // Strip padding
-  const stripped = base64.replace(/=+$/, "");
-  const byteLength = Math.floor((stripped.length * 3) / 4);
+  let stripped = base64;
+  while (stripped.endsWith("=")) {
+    stripped = stripped.slice(0, stripped.length - 1);
+  }
+  const byteLength = (stripped.length * 3) >> 2;
   const bytes = new Uint8Array(byteLength);
-  let offset = 0;
+  let offset: int = 0 as int;
 
   for (let i = 0; i < stripped.length; i += 4) {
-    const a = BASE64_LOOKUP[stripped[i]!] ?? 0;
-    const b = BASE64_LOOKUP[stripped[i + 1]!] ?? 0;
-    const c = BASE64_LOOKUP[stripped[i + 2]!] ?? 0;
-    const d = BASE64_LOOKUP[stripped[i + 3]!] ?? 0;
+    const a = BASE64_LOOKUP[stripped[i]!] ?? (0 as int);
+    const b = BASE64_LOOKUP[stripped[i + 1]!] ?? (0 as int);
+    const c =
+      i + 2 < stripped.length
+        ? (BASE64_LOOKUP[stripped[i + 2]!] ?? (0 as int))
+        : (0 as int);
+    const d =
+      i + 3 < stripped.length
+        ? (BASE64_LOOKUP[stripped[i + 3]!] ?? (0 as int))
+        : (0 as int);
 
     bytes[offset] = ((a << 2) | (b >> 4)) & 0xff;
     offset += 1;
@@ -258,14 +318,35 @@ export const base64ToBytes = (base64: string): Uint8Array => {
 };
 
 export const base64UrlToBase64 = (base64url: string): string => {
-  let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  let base64 = "";
+  for (let index = 0; index < base64url.length; index += 1) {
+    const char = base64url.charAt(index);
+    if (char === "-") {
+      base64 += "+";
+    } else if (char === "_") {
+      base64 += "/";
+    } else {
+      base64 += char;
+    }
+  }
   const padding = (4 - (base64.length % 4)) % 4;
-  if (padding > 0) {
-    base64 = base64 + "=".repeat(padding);
+  for (let index = 0; index < padding; index += 1) {
+    base64 += "=";
   }
   return base64;
 };
 
 export const base64ToBase64Url = (base64: string): string => {
-  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  let result = "";
+  for (let index = 0; index < base64.length; index += 1) {
+    const char = base64.charAt(index);
+    if (char === "+") {
+      result += "-";
+    } else if (char === "/") {
+      result += "_";
+    } else if (char !== "=") {
+      result += char;
+    }
+  }
+  return result;
 };

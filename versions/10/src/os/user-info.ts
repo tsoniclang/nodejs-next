@@ -3,7 +3,7 @@
  *
  * Baseline: nodejs-clr/src/nodejs/os/userInfo.cs
  */
-import { Environment, SpecialFolder } from "@tsonic/dotnet/System.js";
+import { Environment, Environment_SpecialFolder } from "@tsonic/dotnet/System.js";
 import {
   OSPlatform,
   RuntimeInformation,
@@ -26,6 +26,6 @@ export const userInfo = (): UserInfo => {
     shell: isWindows
       ? null
       : (Environment.GetEnvironmentVariable("SHELL") ?? "/bin/bash"),
-    homedir: Environment.GetFolderPath(SpecialFolder.UserProfile),
+    homedir: Environment.GetFolderPath(Environment_SpecialFolder.UserProfile),
   };
 };

@@ -4,6 +4,9 @@
  *
  * Baseline: nodejs-clr/src/nodejs/tls/tls.cs
  */
+/// <reference path="../../globals.d.ts" />
+
+import type {} from "../type-bootstrap.js";
 
 export {
   CipherNameAndProtocol,
@@ -86,12 +89,12 @@ export const createServer = (
   secureConnectionListener?: (socket: TLSSocket) => void
 ): TLSServer => {
   if (typeof optionsOrListener === "function") {
-    return new TLSServer(optionsOrListener, null);
+    return new TLSServer(optionsOrListener);
   }
-  return new TLSServer(
-    optionsOrListener ?? null,
-    secureConnectionListener ?? null
-  );
+  if (optionsOrListener !== undefined) {
+    return new TLSServer(optionsOrListener, secureConnectionListener ?? null);
+  }
+  return new TLSServer();
 };
 
 /**
@@ -105,21 +108,21 @@ export const connect = (
   optionsOrCallback?: ConnectionOptions | (() => void) | null,
   secureConnectListener?: (() => void) | null
 ): TLSSocket => {
+  let options: ConnectionOptions;
   // Normalise overloads
-  const options: ConnectionOptions =
-    typeof optionsOrPort === "number"
-      ? (() => {
-          const opts =
-            optionsOrCallback instanceof ConnectionOptions
-              ? optionsOrCallback
-              : new ConnectionOptions();
-          opts.port = optionsOrPort;
-          if (typeof hostOrListener === "string") {
-            opts.host = hostOrListener;
-          }
-          return opts;
-        })()
-      : optionsOrPort;
+  if (typeof optionsOrPort === "number") {
+    const opts =
+      optionsOrCallback instanceof ConnectionOptions
+        ? optionsOrCallback
+        : new ConnectionOptions();
+    opts.port = optionsOrPort;
+    if (typeof hostOrListener === "string") {
+      opts.host = hostOrListener;
+    }
+    options = opts;
+  } else {
+    options = optionsOrPort;
+  }
 
   const listener: (() => void) | null =
     typeof hostOrListener === "function"
@@ -128,18 +131,16 @@ export const connect = (
         ? optionsOrCallback
         : secureConnectListener ?? null;
 
-  const secureContext = createSecureContext(
-    (() => {
-      const ctxOpts = new SecureContextOptions();
-      ctxOpts.ca = options.ca;
-      ctxOpts.cert = options.cert;
-      ctxOpts.key = options.key;
-      ctxOpts.passphrase = options.passphrase;
-      ctxOpts.minVersion =
-        options.rejectUnauthorized !== false ? "TLSv1.2" : null;
-      return ctxOpts;
-    })()
-  );
+  const rejectUnauthorized = options.rejectUnauthorized ?? true;
+
+  const ctxOpts = new SecureContextOptions();
+  ctxOpts.ca = options.ca;
+  ctxOpts.cert = options.cert;
+  ctxOpts.key = options.key;
+  ctxOpts.passphrase = options.passphrase;
+  ctxOpts.minVersion = rejectUnauthorized ? "TLSv1.2" : null;
+
+  const secureContext = createSecureContext(ctxOpts);
 
   const socketOpts = new TLSSocketOptions();
   socketOpts.isServer = false;
@@ -148,7 +149,7 @@ export const connect = (
   socketOpts.cert = options.cert;
   socketOpts.key = options.key;
   socketOpts.passphrase = options.passphrase;
-  socketOpts.rejectUnauthorized = options.rejectUnauthorized;
+  socketOpts.rejectUnauthorized = rejectUnauthorized;
   socketOpts.secureContext = secureContext;
 
   // TODO: create a real transport socket from the substrate net module
@@ -157,7 +158,9 @@ export const connect = (
   const tlsSocket = new TLSSocket(transportSocket, socketOpts);
 
   if (listener !== null) {
-    tlsSocket.once("secureConnect", listener as (...args: unknown[]) => void);
+    tlsSocket.once("secureConnect", (..._args: unknown[]) => {
+      listener();
+    });
   }
 
   // TODO: initiate TCP connection then TLS handshake via substrate

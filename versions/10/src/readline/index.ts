@@ -4,6 +4,10 @@
  *
  * Baseline: nodejs-clr/src/nodejs/readline/readline.cs
  */
+/// <reference path="../../globals.d.ts" />
+
+import type {} from "../type-bootstrap.js";
+
 import type { Readable } from "../stream/readable.ts";
 import type { Writable } from "../stream/writable.ts";
 import { Interface } from "./interface.ts";
@@ -37,13 +41,12 @@ export const createInterface = (
       throw new Error("input stream is required");
     }
     return new Interface(optionsOrInput);
+  } else {
+    const options = new InterfaceOptions();
+    options.input = optionsOrInput as Readable;
+    options.output = output;
+    return new Interface(options);
   }
-
-  // Treat as Readable input stream
-  const options = new InterfaceOptions();
-  options.input = optionsOrInput as Readable;
-  options.output = output;
-  return new Interface(options);
 };
 
 /**
@@ -56,7 +59,7 @@ export const createInterface = (
  * @returns True if stream is a TTY and function succeeded.
  */
 export const clearLine = (
-  stream: Writable,
+  stream: Writable | null,
   dir: number,
   callback?: () => void,
 ): boolean => {
@@ -103,7 +106,7 @@ export const clearLine = (
  * @returns True if stream is a TTY and function succeeded.
  */
 export const clearScreenDown = (
-  stream: Writable,
+  stream: Writable | null,
   callback?: () => void,
 ): boolean => {
   if (stream === undefined || stream === null) {
@@ -137,7 +140,7 @@ export const clearScreenDown = (
  * @returns True if stream is a TTY and function succeeded.
  */
 export const cursorTo = (
-  stream: Writable,
+  stream: Writable | null,
   x: number,
   y?: number | null,
   callback?: () => void,
@@ -180,7 +183,7 @@ export const cursorTo = (
  * @returns True if stream is a TTY and function succeeded.
  */
 export const moveCursor = (
-  stream: Writable,
+  stream: Writable | null,
   dx: number,
   dy: number,
   callback?: () => void,

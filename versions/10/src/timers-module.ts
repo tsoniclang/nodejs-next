@@ -1,5 +1,15 @@
-import type { int } from "@tsonic/core/types.js";
-import { CancellationTokenSource } from "@tsonic/dotnet/System.Threading.js";
+/// <reference path="../globals.d.ts" />
+
+import type {} from "./type-bootstrap.js";
+
+import type { int, long, out } from "@tsonic/core/types.js";
+import { Environment } from "@tsonic/dotnet/System.js";
+import { ConcurrentQueue } from "@tsonic/dotnet/System.Collections.Concurrent.js";
+import {
+  CancellationTokenSource,
+  ManualResetEventSlim,
+  Thread,
+} from "@tsonic/dotnet/System.Threading.js";
 import { Task } from "@tsonic/dotnet/System.Threading.Tasks.js";
 
 const normalizeDelay = (value?: int): int => {
@@ -8,6 +18,8 @@ const normalizeDelay = (value?: int): int => {
   }
   return value;
 };
+
+const immediateDispatchDelay = 50 as int;
 
 export class Timeout {
   private readonly callback: () => void;
@@ -87,25 +99,61 @@ export class Timeout {
 }
 
 export class Immediate {
+  private static readonly pendingHandles: ConcurrentQueue<Immediate> =
+    new ConcurrentQueue<Immediate>();
+  private static readonly dispatchThread: Thread =
+    Immediate.startDispatchThread();
+
+  private static startDispatchThread(): Thread {
+    const thread = new Thread(() => {
+      let handle: Immediate = undefined as unknown as Immediate;
+      while (true) {
+        let hadWork = false;
+
+        while (Immediate.pendingHandles.TryDequeue(handle as out<Immediate>)) {
+          hadWork = true;
+          handle.tryExecute();
+        }
+
+        if (!hadWork) {
+          Thread.Sleep(1 as int);
+        }
+      }
+    });
+    thread.IsBackground = true;
+    thread.Name = "nodejs.Immediate.dispatch";
+    thread.Start();
+    return thread;
+  }
+
   private readonly callback: () => void;
-  private readonly cancellation: CancellationTokenSource =
-    new CancellationTokenSource();
+  private readonly cancelSignal: ManualResetEventSlim =
+    new ManualResetEventSlim(false);
+  private readonly readyAfterTick: long =
+    Environment.TickCount64 + immediateDispatchDelay;
   private disposed = false;
   private referenced = true;
 
   public constructor(callback: () => void) {
     this.callback = callback;
-    Task.Run(async () => {
-      try {
-        await Task.Delay(1 as int, this.cancellation.Token);
-        if (!this.disposed && !this.cancellation.IsCancellationRequested) {
-          this.callback();
-          this.dispose();
-        }
-      } catch {
-        return;
-      }
-    });
+    Immediate.pendingHandles.Enqueue(this);
+  }
+
+  private tryExecute(): void {
+    if (this.cancelSignal.IsSet || this.disposed) {
+      return;
+    }
+
+    if (Environment.TickCount64 < this.readyAfterTick) {
+      Immediate.pendingHandles.Enqueue(this);
+      return;
+    }
+
+    try {
+      this.callback();
+    } finally {
+      this.dispose();
+    }
   }
 
   public ref(): Immediate {
@@ -128,8 +176,7 @@ export class Immediate {
     }
 
     this.disposed = true;
-    this.cancellation.Cancel();
-    this.cancellation.Dispose();
+    this.cancelSignal.Set();
   }
 }
 
@@ -155,7 +202,7 @@ export class TimersPromises {
   }
 
   public async setImmediate(value?: unknown): Promise<unknown> {
-    await Task.Delay(1 as int);
+    await Task.Delay(immediateDispatchDelay);
     return value;
   }
 

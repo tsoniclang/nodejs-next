@@ -1,3 +1,10 @@
+import {
+  concatBytes,
+  decodeInputBytes,
+  encodeOutputBytes,
+  transformAes,
+} from "./crypto-helpers.ts";
+
 /**
  * Node.js crypto Decipher class.
  *
@@ -12,6 +19,7 @@ export class Decipher {
   private readonly _key: Uint8Array;
   private readonly _iv: Uint8Array | null;
   private readonly _isGcmMode: boolean;
+  private readonly _chunks: Uint8Array[] = [];
   private _gcmTag: Uint8Array | null = null;
   private _gcmAad: Uint8Array | null = null;
   private _finalized: boolean = false;
@@ -30,18 +38,18 @@ export class Decipher {
   public update(data: Uint8Array, outputEncoding?: string): string;
   public update(
     data: string | Uint8Array,
-    _inputOrOutputEncoding?: string,
-    _outputEncoding?: string
+    inputOrOutputEncoding?: string,
+    _outputEncoding?: string,
   ): string {
     if (this._finalized) {
       throw new Error("Decipher already finalized");
     }
 
-    // TODO: actual decipher update
-    void data;
-    void this._algorithm;
-    void this._key;
-    void this._iv;
+    if (typeof data === "string") {
+      this._chunks.push(decodeInputBytes(data, inputOrOutputEncoding ?? "utf8"));
+    } else {
+      this._chunks.push(data);
+    }
     return "";
   }
 
@@ -56,14 +64,19 @@ export class Decipher {
     }
 
     this._finalized = true;
+    const bytes = transformAes(
+      this._algorithm,
+      this._key,
+      this._iv,
+      concatBytes(...this._chunks),
+      false,
+    );
 
     if (typeof outputEncoding === "string") {
-      // TODO: actual decipher finalization returning encoded string
-      return "";
+      return encodeOutputBytes(bytes, outputEncoding) as string;
     }
 
-    // TODO: actual decipher finalization returning raw bytes
-    return new Uint8Array(0);
+    return bytes;
   }
 
   /**

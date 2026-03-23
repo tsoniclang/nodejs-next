@@ -8,8 +8,11 @@
  * with TODO markers.
  */
 
-import type { int } from "@tsonic/core/types.js";
-import { EventEmitter } from "../events-module.ts";
+import type { byte, int } from "@tsonic/core/types.js";
+import type { HttpListenerResponse } from "@tsonic/dotnet/System.Net.js";
+import { Encoding } from "@tsonic/dotnet/System.Text.js";
+import { Buffer } from "../buffer/index.ts";
+import { EventEmitter, toEventListener } from "../events-module.ts";
 
 /**
  * Implements Node.js http.ServerResponse.
@@ -22,9 +25,12 @@ export class ServerResponse extends EventEmitter {
   private _headersSent: boolean = false;
   private _finished: boolean = false;
   private _headers: Map<string, string> = new Map<string, string>();
+  private readonly _nativeResponse: HttpListenerResponse | null;
+  private readonly _bodyChunks: byte[][] = [];
 
-  constructor() {
+  constructor(nativeResponse?: HttpListenerResponse | null) {
     super();
+    this._nativeResponse = nativeResponse ?? null;
   }
 
   /**
@@ -91,9 +97,11 @@ export class ServerResponse extends EventEmitter {
     }
 
     if (headers !== undefined && headers !== null) {
-      for (const [key, value] of headers) {
-        this._headers.set(key, value);
-      }
+      (headers as unknown as {
+        forEach(callback: (value: string, key: string) => void): void;
+      }).forEach((value, key) => {
+        this._headers.set(this._normalizeHeaderName(key), value);
+      });
     }
 
     this._headersSent = true;
@@ -124,7 +132,7 @@ export class ServerResponse extends EventEmitter {
       throw new Error("Headers already sent");
     }
 
-    this._headers.set(name, value);
+    this._headers.set(this._normalizeHeaderName(name), value);
     return this;
   }
 
@@ -134,7 +142,7 @@ export class ServerResponse extends EventEmitter {
    * @returns Header value or null if not set.
    */
   public getHeader(name: string): string | null {
-    const value = this._headers.get(name);
+    const value = this._headers.get(this._normalizeHeaderName(name));
     return value !== undefined ? value : null;
   }
 
@@ -143,7 +151,13 @@ export class ServerResponse extends EventEmitter {
    * @returns Array of header names.
    */
   public getHeaderNames(): string[] {
-    return Array.from(this._headers.keys());
+    const names: string[] = [];
+    (this._headers as unknown as {
+      forEach(callback: (value: string, key: string) => void): void;
+    }).forEach((_value, key) => {
+      names.push(key);
+    });
+    return names;
   }
 
   /**
@@ -152,10 +166,12 @@ export class ServerResponse extends EventEmitter {
    */
   public getHeaders(): Map<string, string> {
     const copy = new Map<string, string>();
-    for (const [key, value] of this._headers) {
+    (this._headers as unknown as {
+      forEach(callback: (value: string, key: string) => void): void;
+    }).forEach((value, key) => {
       copy.set(key, value);
-    }
-    return copy;
+    });
+    return copy as unknown as Map<string, string>;
   }
 
   /**
@@ -164,7 +180,7 @@ export class ServerResponse extends EventEmitter {
    * @returns True if header exists.
    */
   public hasHeader(name: string): boolean {
-    return this._headers.has(name);
+    return this._headers.has(this._normalizeHeaderName(name));
   }
 
   /**
@@ -176,7 +192,7 @@ export class ServerResponse extends EventEmitter {
       throw new Error("Headers already sent");
     }
 
-    this._headers.delete(name);
+    this._headers.delete(this._normalizeHeaderName(name));
   }
 
   /**
@@ -187,15 +203,20 @@ export class ServerResponse extends EventEmitter {
    * @returns True if entire data was flushed successfully.
    */
   public write(
-    chunk: string,
+    chunk: string | Buffer | byte[] | Uint8Array,
     encoding?: string | null,
     callback?: (() => void) | null
   ): boolean {
+    if (this._finished) {
+      throw new Error("Cannot write after end");
+    }
+
     if (!this._headersSent) {
       this._headersSent = true;
     }
 
-    // TODO: Write chunk to underlying OS network response stream
+    this._bodyChunks.push(this._toByteArray(chunk, encoding ?? undefined));
+
     if (callback !== undefined && callback !== null) {
       callback();
     }
@@ -219,28 +240,40 @@ export class ServerResponse extends EventEmitter {
    * @returns This response for chaining.
    */
   public end(
-    chunk: string,
+    chunk: string | Buffer | byte[] | Uint8Array,
     encoding?: string | null,
     callback?: (() => void) | null
   ): ServerResponse;
   public end(
-    chunkOrCallback?: string | (() => void) | null,
+    chunkOrCallback?:
+      | string
+      | Buffer
+      | byte[]
+      | Uint8Array
+      | (() => void)
+      | null,
     encoding?: string | null,
     callback?: (() => void) | null
   ): ServerResponse {
+    if (this._finished) {
+      return this;
+    }
+
     if (typeof chunkOrCallback === "function") {
       // end(callback) overload
-      this._finished = true;
-      this.emit("finish");
+      this._finalizeResponse([]);
       chunkOrCallback();
       return this;
     }
 
-    if (typeof chunkOrCallback === "string") {
+    if (
+      chunkOrCallback !== undefined &&
+      chunkOrCallback !== null &&
+      typeof chunkOrCallback !== "function"
+    ) {
       // end(chunk, encoding?, callback?) overload
-      // TODO: Write final chunk to underlying OS network response stream
-      this._finished = true;
-      this.emit("finish");
+      this.write(chunkOrCallback, encoding ?? undefined);
+      this._finalizeResponse(this._flattenBodyChunks());
       if (callback !== undefined && callback !== null) {
         callback();
       }
@@ -248,8 +281,7 @@ export class ServerResponse extends EventEmitter {
     }
 
     // end() overload — no payload
-    this._finished = true;
-    this.emit("finish");
+    this._finalizeResponse(this._flattenBodyChunks());
     return this;
   }
 
@@ -265,7 +297,7 @@ export class ServerResponse extends EventEmitter {
     }
 
     if (callback !== undefined) {
-      this.once("timeout", callback);
+      this.once("timeout", toEventListener(callback)!);
     }
 
     // TODO: Implement actual timeout mechanism (requires OS timer substrate)
@@ -278,7 +310,104 @@ export class ServerResponse extends EventEmitter {
   public flushHeaders(): void {
     if (!this._headersSent) {
       this._headersSent = true;
-      // TODO: Actually flush headers to OS network substrate
     }
+
+    this._applyHeadersToNativeResponse();
+  }
+
+  private _normalizeHeaderName(name: string): string {
+    return name.toLowerCase();
+  }
+
+  private _toByteArray(
+    chunk: string | Buffer | byte[] | Uint8Array,
+    encoding?: string
+  ): byte[] {
+    if (typeof chunk === "string") {
+      return Encoding.UTF8.GetBytes(chunk);
+    }
+
+    if (Buffer.isBuffer(chunk)) {
+      const result: byte[] = [];
+      const source = chunk.buffer;
+      for (let index = 0; index < source.length; index += 1) {
+        result.push(source[index]! as byte);
+      }
+      return result;
+    }
+
+    const rawBytes = chunk as byte[];
+    const result: byte[] = [];
+    for (let index = 0; index < rawBytes.length; index += 1) {
+      result.push(rawBytes[index]! as byte);
+    }
+    return result;
+  }
+
+  private _flattenBodyChunks(): byte[] {
+    const result: byte[] = [];
+
+    for (const chunk of this._bodyChunks) {
+      for (let index = 0; index < chunk.length; index += 1) {
+        result.push(chunk[index]!);
+      }
+    }
+
+    return result;
+  }
+
+  private _applyHeadersToNativeResponse(): void {
+    if (this._nativeResponse === null) {
+      return;
+    }
+
+    const nativeResponse = this._nativeResponse;
+
+    nativeResponse.StatusCode = this._statusCode;
+    nativeResponse.KeepAlive = false;
+
+    if (this._statusMessage.length > 0) {
+      nativeResponse.StatusDescription = this._statusMessage;
+    }
+
+    (this._headers as unknown as {
+      forEach(callback: (value: string, key: string) => void): void;
+    }).forEach((value, key) => {
+      if (key === "content-type") {
+        nativeResponse.ContentType = value;
+        return;
+      }
+
+      if (key === "connection") {
+        nativeResponse.KeepAlive = value.toLowerCase() === "keep-alive";
+        return;
+      }
+
+      if (key === "content-length") {
+        return;
+      }
+
+      nativeResponse.AppendHeader(key, value);
+    });
+  }
+
+  private _finalizeResponse(body: byte[]): void {
+    if (this._finished) {
+      return;
+    }
+
+    if (!this._headersSent) {
+      this._headersSent = true;
+    }
+
+    this._applyHeadersToNativeResponse();
+
+    if (this._nativeResponse !== null) {
+      this._nativeResponse.Close(body, true);
+    }
+
+    this._finished = true;
+    this.emit("finish");
+    this.emit("close");
   }
 }

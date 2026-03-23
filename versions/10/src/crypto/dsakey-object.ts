@@ -29,7 +29,7 @@ export class DSAPublicKeyObject extends KeyObject {
     return null;
   }
 
-  public export(_options?: unknown): unknown {
+  protected exportCore(_options?: unknown): unknown {
     // TODO: actual DSA public key export in PEM/DER format
     return this._publicKeyData;
   }
@@ -58,7 +58,7 @@ export class DSAPrivateKeyObject extends KeyObject {
     return null;
   }
 
-  public export(_options?: unknown): unknown {
+  protected exportCore(_options?: unknown): unknown {
     // TODO: actual DSA private key export in PEM/DER format
     return this._privateKeyData;
   }

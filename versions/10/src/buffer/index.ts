@@ -3,6 +3,10 @@
  *
  * Baseline: nodejs-clr/src/nodejs/buffer/
  */
+/// <reference path="../../globals.d.ts" />
+
+import type {} from "../type-bootstrap.js";
+
 export { Buffer } from "./buffer.ts";
 export type { BufferEncoding } from "./buffer-encoding.ts";
 export {

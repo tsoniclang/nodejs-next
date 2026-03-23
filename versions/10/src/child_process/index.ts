@@ -1,116 +1,282 @@
 /**
  * Node.js child_process module.
  *
- * child_process is heavily substrate-dependent. Class shapes and method
- * signatures are ported; actual process spawning/IPC requires native
- * platform integration and is marked TODO.
- *
  * Baseline: nodejs-clr/src/nodejs/child_process/
  */
+/// <reference path="../../globals.d.ts" />
+
+import type {} from "../type-bootstrap.js";
+
+import { Process, ProcessStartInfo } from "@tsonic/dotnet/System.Diagnostics.js";
+import {
+  OSPlatform,
+  RuntimeInformation,
+} from "@tsonic/dotnet/System.Runtime.InteropServices.js";
+
+import { stringToBytes } from "../buffer/buffer-encoding.ts";
 import { ChildProcess, ExecOptions } from "./child-process.ts";
 import { SpawnSyncReturns } from "./spawn-sync-returns.ts";
 
 export { ChildProcess, ExecOptions } from "./child-process.ts";
 export { SpawnSyncReturns } from "./spawn-sync-returns.ts";
 
+type ProcessRunResult = {
+  readonly pid: number;
+  readonly stdout: string;
+  readonly stderr: string;
+  readonly status: number | null;
+  readonly signal: string | null;
+  readonly error: Error | null;
+};
+
+const isWindows = (): boolean =>
+  RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
+const normalizeArgs = (args?: string[] | null): string[] => args ?? [];
+
+const normalizeSignal = (options?: ExecOptions | null): string =>
+  options?.killSignal ?? "SIGTERM";
+
+const escapeShellArg = (value: string): string =>
+  value.includes(" ") || value.includes("\"") || value.includes("'")
+    ? JSON.stringify(value)
+    : value;
+
+const buildArgumentsString = (args: readonly string[]): string =>
+  args.map(escapeShellArg).join(" ");
+
+const configureStartInfo = (
+  startInfo: ProcessStartInfo,
+  options?: ExecOptions | null,
+  redirectInput: boolean = false,
+): void => {
+  startInfo.UseShellExecute = false;
+  startInfo.CreateNoWindow = options?.windowsHide ?? true;
+  startInfo.RedirectStandardOutput = true;
+  startInfo.RedirectStandardError = true;
+  startInfo.RedirectStandardInput = redirectInput;
+
+  if (options?.cwd !== null && options?.cwd !== undefined) {
+    startInfo.WorkingDirectory = options.cwd;
+  }
+
+  if (options?.env !== null && options?.env !== undefined) {
+    for (const key in options.env) {
+      const value = options.env[key];
+      if (value !== undefined) {
+        startInfo.EnvironmentVariables.Add(key, value);
+      }
+    }
+  }
+};
+
+const createShellStartInfo = (
+  command: string,
+  options?: ExecOptions | null,
+): ProcessStartInfo => {
+  const shell = options?.shell ?? (isWindows() ? "cmd.exe" : "/bin/sh");
+  const startInfo = new ProcessStartInfo(shell);
+
+  if (isWindows()) {
+    startInfo.Arguments = `/c ${command}`;
+  } else {
+    startInfo.Arguments = `-c ${JSON.stringify(command)}`;
+  }
+
+  configureStartInfo(startInfo, options, options?.input !== null && options?.input !== undefined);
+  return startInfo;
+};
+
+const createExecutableStartInfo = (
+  file: string,
+  args?: string[] | null,
+  options?: ExecOptions | null,
+): ProcessStartInfo => {
+  const startInfo = new ProcessStartInfo(file);
+  startInfo.Arguments = buildArgumentsString(normalizeArgs(args));
+
+  configureStartInfo(startInfo, options, options?.input !== null && options?.input !== undefined);
+  return startInfo;
+};
+
+const startProcess = (startInfo: ProcessStartInfo): Process => {
+  const process = Process.Start(startInfo);
+  if (process === undefined) {
+    throw new Error(`Failed to start process: ${startInfo.FileName}`);
+  }
+  return process;
+};
+
+const finishSyncProcess = (
+  process: Process,
+  options?: ExecOptions | null,
+): ProcessRunResult => {
+  if (options?.input !== null && options?.input !== undefined) {
+    process.StandardInput.Write(options.input);
+    process.StandardInput.Close();
+  }
+
+  let signal: string | null = null;
+  let error: Error | null = null;
+
+  const timeout = options?.timeout ?? 0;
+  if (timeout > 0) {
+    const exited = process.WaitForExit(timeout);
+    if (!exited) {
+      signal = normalizeSignal(options);
+      process.Kill();
+      process.WaitForExit();
+      error = new Error(`Process timed out after ${String(timeout)}ms`);
+    }
+  } else {
+    process.WaitForExit();
+  }
+
+  const stdout = process.StandardOutput.ReadToEnd();
+  const stderr = process.StandardError.ReadToEnd();
+  const status = signal === null ? process.ExitCode : null;
+
+  if (error === null && status !== null && status !== 0) {
+    error = new Error(stderr.length > 0 ? stderr : `Process exited with code ${String(status)}`);
+  }
+
+  return {
+    pid: process.Id,
+    stdout,
+    stderr,
+    status,
+    signal,
+    error,
+  };
+};
+
+const toStringResult = (
+  command: string,
+  args: string[] | null | undefined,
+  options: ExecOptions | null | undefined,
+): SpawnSyncReturns<string> => {
+  const result = new SpawnSyncReturns<string>("");
+
+  try {
+    const process = startProcess(createExecutableStartInfo(command, args, options));
+    const finished = finishSyncProcess(process, options);
+    result.pid = finished.pid;
+    result.stdout = finished.stdout;
+    result.stderr = finished.stderr;
+    result.output = [null, finished.stdout, finished.stderr];
+    result.status = finished.status;
+    result.signal = finished.signal;
+    result.error = finished.error;
+  } catch (error) {
+    result.error =
+      error instanceof Error ? error : new Error(String(error));
+  }
+
+  return result;
+};
+
+const toBinaryResult = (
+  command: string,
+  args: string[] | null | undefined,
+  options: ExecOptions | null | undefined,
+): SpawnSyncReturns<Uint8Array> => {
+  const empty = new Uint8Array(0);
+  const result = new SpawnSyncReturns<Uint8Array>(empty);
+
+  try {
+    const process = startProcess(createExecutableStartInfo(command, args, options));
+    const finished = finishSyncProcess(process, options);
+    result.pid = finished.pid;
+    result.stdout = stringToBytes(finished.stdout, "utf8");
+    result.stderr = stringToBytes(finished.stderr, "utf8");
+    result.output = [null, result.stdout, result.stderr];
+    result.status = finished.status;
+    result.signal = finished.signal;
+    result.error = finished.error;
+  } catch (error) {
+    result.error =
+      error instanceof Error ? error : new Error(String(error));
+  }
+
+  return result;
+};
+
+const execWithShell = (
+  command: string,
+  options?: ExecOptions | null,
+): ProcessRunResult => {
+  const process = startProcess(createShellStartInfo(command, options));
+  return finishSyncProcess(process, options);
+};
+
+const coerceExecOutput = (
+  stdout: string,
+  options?: ExecOptions | null,
+): string | Uint8Array => {
+  const encoding = options?.encoding ?? "buffer";
+  return encoding === "buffer" ? stringToBytes(stdout, "utf8") : stdout;
+};
+
 // ==================== execSync ====================
 
-/**
- * Synchronous version of exec() that will block until the child process exits.
- * Returns the stdout from the command as a Uint8Array.
- *
- * @param command - The command to run, with space-separated arguments.
- * @returns The stdout from the command.
- */
 export const execSync = (
   command: string,
   options?: ExecOptions | null,
 ): string | Uint8Array => {
-  // TODO: substrate-dependent -- requires native process spawning
-  void command;
-  void options;
-  throw new Error("child_process.execSync is not yet implemented (substrate-dependent)");
+  const finished = execWithShell(command, options);
+  if (finished.error !== null) {
+    throw finished.error;
+  }
+
+  return coerceExecOutput(finished.stdout, options);
 };
 
 // ==================== spawnSync ====================
 
-/**
- * Synchronous version of spawn() that will block until the child process
- * exits.
- *
- * @param command - The command to run.
- * @param args - List of string arguments.
- * @param options - Options object.
- * @returns SpawnSyncReturns object containing pid, output, stdout, stderr,
- *   status, signal.
- */
 export const spawnSync = (
   command: string,
   args?: string[] | null,
   options?: ExecOptions | null,
 ): SpawnSyncReturns<Uint8Array> => {
-  // TODO: substrate-dependent -- requires native process spawning
-  void command;
-  void args;
-  void options;
-  throw new Error("child_process.spawnSync is not yet implemented (substrate-dependent)");
+  return toBinaryResult(command, args, options);
 };
 
-/**
- * Synchronous version of spawn() that will block until the child process
- * exits. Returns string output when encoding is specified.
- *
- * @param command - The command to run.
- * @param args - List of string arguments.
- * @param options - Options object.
- * @returns SpawnSyncReturns object with string stdout/stderr.
- */
 export const spawnSyncString = (
   command: string,
   args?: string[] | null,
   options?: ExecOptions | null,
 ): SpawnSyncReturns<string> => {
-  // TODO: substrate-dependent -- requires native process spawning
-  void command;
-  void args;
-  void options;
-  throw new Error("child_process.spawnSyncString is not yet implemented (substrate-dependent)");
+  return toStringResult(command, args, options);
 };
 
 // ==================== execFileSync ====================
 
-/**
- * Synchronous version of execFile() that spawns the command directly
- * without a shell.
- *
- * @param file - The name or path of the executable file to run.
- * @param args - List of string arguments.
- * @param options - Options object.
- * @returns The stdout from the command (Uint8Array or string depending on
- *   encoding option).
- */
 export const execFileSync = (
   file: string,
   args?: string[] | null,
   options?: ExecOptions | null,
 ): string | Uint8Array => {
-  // TODO: substrate-dependent -- requires native process spawning
-  void file;
-  void args;
-  void options;
-  throw new Error("child_process.execFileSync is not yet implemented (substrate-dependent)");
+  if (
+    options?.encoding !== null &&
+    options?.encoding !== undefined &&
+    options.encoding !== "buffer"
+  ) {
+    const stringResult = toStringResult(file, args, options);
+    if (stringResult.error !== null) {
+      throw stringResult.error;
+    }
+    return stringResult.stdout;
+  }
+
+  const binaryResult = toBinaryResult(file, args, options);
+  if (binaryResult.error !== null) {
+    throw binaryResult.error;
+  }
+  return binaryResult.stdout;
 };
 
 // ==================== Async Methods ====================
 
-/**
- * Async version of execSync(). Spawns a shell and runs a command within
- * that shell.
- *
- * @param command - The command to run.
- * @param optionsOrCallback - Either options object or callback function.
- * @param callback - Callback function (error, stdout, stderr).
- */
 export function exec(
   command: string,
   callback: (error: Error | null, stdout: string, stderr: string) => void,
@@ -128,73 +294,63 @@ export function exec(
     | ((error: Error | null, stdout: string, stderr: string) => void),
   callback?: (error: Error | null, stdout: string, stderr: string) => void,
 ): void {
-  // TODO: substrate-dependent -- requires native process spawning
-  void command;
-  void optionsOrCallback;
-  void callback;
-  throw new Error("child_process.exec is not yet implemented (substrate-dependent)");
+  const resolvedCallback =
+    typeof optionsOrCallback === "function" ? optionsOrCallback : callback;
+  const resolvedOptions =
+    typeof optionsOrCallback === "function" ? null : optionsOrCallback;
+
+  if (resolvedCallback === undefined) {
+    throw new Error("exec callback is required");
+  }
+
+  try {
+    const finished = execWithShell(command, resolvedOptions);
+    resolvedCallback(finished.error, finished.stdout, finished.stderr);
+  } catch (error) {
+    const resolvedError =
+      error instanceof Error ? error : new Error(String(error));
+    resolvedCallback(resolvedError, "", "");
+  }
 }
 
-/**
- * Spawns a new process asynchronously using the given command.
- *
- * @param command - The command to run.
- * @param args - List of string arguments.
- * @param options - Options object.
- * @returns ChildProcess instance.
- */
 export const spawn = (
   command: string,
   args?: string[] | null,
   options?: ExecOptions | null,
 ): ChildProcess => {
-  // TODO: substrate-dependent -- requires native process spawning
-  void command;
-  void args;
-  void options;
-  throw new Error("child_process.spawn is not yet implemented (substrate-dependent)");
+  const child = new ChildProcess();
+  const resolvedArgs = normalizeArgs(args);
+  child._setSpawnInfo(command, resolvedArgs);
+
+  const process = startProcess(createExecutableStartInfo(command, resolvedArgs, options));
+  child._attachProcess(process);
+  child.emit("spawn");
+
+  if (process.WaitForExit(25)) {
+    child._syncFromProcessExit();
+    child.emit("exit", child.exitCode, null);
+    child.emit("close", child.exitCode, null);
+  }
+
+  return child;
 };
 
-/**
- * Async version of execFileSync().
- *
- * @param file - The name or path of the executable file to run.
- * @param args - List of string arguments.
- * @param options - Options object.
- * @param callback - Callback function (error, stdout, stderr).
- */
 export const execFile = (
   file: string,
   args: string[] | null,
   options: ExecOptions | null,
   callback: (error: Error | null, stdout: string, stderr: string) => void,
 ): void => {
-  // TODO: substrate-dependent -- requires native process spawning
-  void file;
-  void args;
-  void options;
-  void callback;
-  throw new Error("child_process.execFile is not yet implemented (substrate-dependent)");
+  const result = toStringResult(file, args, options);
+  callback(result.error, result.stdout, result.stderr);
 };
 
-/**
- * Fork a new Node.js process.
- * Note: This is a simplified implementation that spawns a new process.
- * Full IPC channel support would require additional implementation.
- *
- * @param modulePath - The module to run in the child process.
- * @param args - List of string arguments.
- * @param options - Options object.
- * @returns ChildProcess instance with IPC channel.
- */
 export const fork = (
   modulePath: string,
   args?: string[] | null,
   options?: ExecOptions | null,
 ): ChildProcess => {
-  // TODO: substrate-dependent -- requires native process spawning + IPC
-  void modulePath;
-  void args;
-  void options;
-  throw new Error("child_process.fork is not yet implemented (substrate-dependent)");
+  const child = spawn(modulePath, args, options);
+  child._setConnected(true);
+  return child;
 };

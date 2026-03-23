@@ -5,6 +5,8 @@
  * Baseline: nodejs-clr/src/nodejs/perf_hooks/PerformanceObserver.cs
  */
 
+import type { int } from "@tsonic/core/types.js";
+
 import { PerformanceEntry } from "./performance-entry.ts";
 
 /**
@@ -69,21 +71,30 @@ export type PerformanceObserverCallback = (
   observer: PerformanceObserver,
 ) => void;
 
-const observers: PerformanceObserver[] = [];
+type RegisteredObserver = {
+  id: int;
+  observer: PerformanceObserver;
+};
+
+const observers: RegisteredObserver[] = [];
+let nextObserverId = 1 as int;
 
 /**
  * PerformanceObserver is used to observe performance measurement events and be notified
  * when new performance entries are added to the performance timeline.
  */
 export class PerformanceObserver {
+  private readonly observerId: int;
   private readonly callback: PerformanceObserverCallback;
-  private entryTypes: ReadonlySet<string> = new Set();
+  private entryTypes: string[] = [];
   private observing = false;
 
   public constructor(callback: PerformanceObserverCallback) {
     if (callback === null || callback === undefined) {
       throw new Error("callback must not be null");
     }
+    this.observerId = nextObserverId;
+    nextObserverId = (nextObserverId + 1) as int;
     this.callback = callback;
   }
 
@@ -100,18 +111,23 @@ export class PerformanceObserver {
       throw new Error("entryTypes must be provided and non-empty");
     }
 
-    this.entryTypes = new Set(options.entryTypes);
+    this.entryTypes = [...options.entryTypes];
     this.observing = true;
 
-    if (!observers.includes(this)) {
-      observers.push(this);
+    if (!observers.some((entry) => entry.id === this.observerId)) {
+      observers.push({
+        id: this.observerId,
+        observer: this,
+      });
     }
   }
 
   public disconnect(): void {
     this.observing = false;
 
-    const index = observers.indexOf(this);
+    const index = observers.findIndex(
+      (entry) => entry.id === this.observerId,
+    );
     if (index >= 0) {
       observers.splice(index, 1);
     }
@@ -128,13 +144,15 @@ export class PerformanceObserver {
   /** @internal */
   static notifyObservers(entry: PerformanceEntry): void {
     const toNotify = observers.filter(
-      (observer) =>
-        observer.observing && observer.entryTypes.has(entry.entryType),
+      (registeredObserver) =>
+        registeredObserver.observer.observing &&
+        registeredObserver.observer.entryTypes.includes(entry.entryType),
     );
 
-    for (const observer of toNotify) {
+    for (const registeredObserver of toNotify) {
       try {
         const entryList = new PerformanceObserverEntryList([entry]);
+        const observer = registeredObserver.observer;
         observer.callback(entryList, observer);
       } catch {
         // Observers should not throw, but if they do, we continue notifying others

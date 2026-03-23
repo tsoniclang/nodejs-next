@@ -53,7 +53,7 @@ export class UtilitiesTests {
   public clearLine_WithNullStream_ShouldThrow(): void {
     let threw = false;
     try {
-      clearLine(null as unknown as Writable, 0);
+      clearLine(null, 0);
     } catch {
       threw = true;
     }
@@ -88,7 +88,7 @@ export class UtilitiesTests {
   public clearScreenDown_WithNullStream_ShouldThrow(): void {
     let threw = false;
     try {
-      clearScreenDown(null as unknown as Writable);
+      clearScreenDown(null);
     } catch {
       threw = true;
     }
@@ -130,7 +130,7 @@ export class UtilitiesTests {
   public cursorTo_WithNullStream_ShouldThrow(): void {
     let threw = false;
     try {
-      cursorTo(null as unknown as Writable, 0);
+      cursorTo(null, 0);
     } catch {
       threw = true;
     }
@@ -193,7 +193,7 @@ export class UtilitiesTests {
   public moveCursor_WithNullStream_ShouldThrow(): void {
     let threw = false;
     try {
-      moveCursor(null as unknown as Writable, 0, 0);
+      moveCursor(null, 0, 0);
     } catch {
       threw = true;
     }

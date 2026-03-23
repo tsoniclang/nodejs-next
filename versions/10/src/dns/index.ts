@@ -3,6 +3,11 @@
  *
  * Baseline: nodejs-clr/src/nodejs/dns/dns.cs
  */
+/// <reference path="../../globals.d.ts" />
+
+import type {} from "../type-bootstrap.js";
+
+import type { int } from "@tsonic/core/types.js";
 import { LookupAddress, LookupOptions } from "./options.ts";
 import { SoaRecord } from "./records.ts";
 import type { CaaRecord, MxRecord, NaptrRecord, SrvRecord, TlsaRecord } from "./records.ts";
@@ -39,13 +44,13 @@ export { DnsPromises, LookupServiceResult } from "./promises.ts";
 // ==================== Constants ====================
 
 /** Limits returned address types to the types of non-loopback addresses configured on the system. */
-export const ADDRCONFIG: number = 0x0400;
+export const ADDRCONFIG: int = 0x0400;
 
 /** If the IPv6 family was specified, but no IPv6 addresses were found, return IPv4 mapped IPv6 addresses. */
-export const V4MAPPED: number = 0x0800;
+export const V4MAPPED: int = 0x0800;
 
 /** If dns.V4MAPPED is specified, return resolved IPv6 addresses as well as IPv4 mapped IPv6 addresses. */
-export const ALL: number = V4MAPPED | ADDRCONFIG;
+export const ALL: int = V4MAPPED | ADDRCONFIG;
 
 // Error codes
 /** DNS server returned answer with no data. */
@@ -100,6 +105,7 @@ export const CANCELLED: string = "ECANCELLED";
 // ==================== Module state ====================
 
 const _promises: DnsPromises = new DnsPromises();
+let defaultResultOrder = "verbatim";
 
 /** Promise-based dns APIs. */
 export const promises: DnsPromises = _promises;
@@ -109,8 +115,8 @@ export const promises: DnsPromises = _promises;
 /** Resolves a host name into the first found A (IPv4) or AAAA (IPv6) record. */
 export const lookup = (
   hostname: string,
-  optionsOrFamily: LookupOptions | number | null,
-  callback: (err: Error | null, address: string, family: number) => void,
+  optionsOrFamily: LookupOptions | int | null,
+  callback: (err: Error | null, address: string, family: int) => void,
 ): void => {
   // TODO: actual DNS resolution via .NET Dns.GetHostAddresses
   callback(null, "", 0);
@@ -131,7 +137,7 @@ export const lookupAll = (
 /** Resolves the given address and port into a host name and service. */
 export const lookupService = (
   address: string,
-  port: number,
+  port: int,
   callback: (err: Error | null, hostname: string, service: string) => void,
 ): void => {
   // TODO: actual reverse lookup via .NET Dns.GetHostEntry
@@ -337,8 +343,7 @@ export const reverse = (
 
 /** Get the default value for order in dns.lookup(). */
 export const getDefaultResultOrder = (): string => {
-  // TODO: return module-level state
-  return "verbatim";
+  return defaultResultOrder;
 };
 
 /** Set the default value of order in dns.lookup(). */
@@ -348,7 +353,7 @@ export const setDefaultResultOrder = (order: string): void => {
       `Invalid order value: ${order}. Must be 'ipv4first', 'ipv6first' or 'verbatim'`,
     );
   }
-  // TODO: store in module-level state
+  defaultResultOrder = order;
 };
 
 /** Sets the IP address and port of servers to be used when performing DNS resolution. */

@@ -4,6 +4,20 @@
   "surfaces": [
     "@tsonic/js"
   ],
+  "requiredTypeRoots": [
+    "."
+  ],
+  "runtime": {
+    "frameworkReferences": [
+      {
+        "id": "Microsoft.AspNetCore.App",
+        "types": "@tsonic/aspnetcore"
+      }
+    ],
+    "runtimePackages": [
+      "@tsonic/aspnetcore"
+    ]
+  },
   "source": {
     "exports": {
       "./assert.js": "./src/assert-module.ts",

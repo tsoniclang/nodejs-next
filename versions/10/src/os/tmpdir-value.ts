@@ -8,8 +8,8 @@ import { Path } from "@tsonic/dotnet/System.IO.js";
 export const tmpdir = (): string => {
   const raw = Path.GetTempPath();
   // Node.js trims trailing separators from tmpdir
-  const sep = Path.DirectorySeparatorChar;
-  const altSep = Path.AltDirectorySeparatorChar;
+  const sep = `${Path.DirectorySeparatorChar}`;
+  const altSep = `${Path.AltDirectorySeparatorChar}`;
   let end = raw.length;
   while (
     end > 1 &&

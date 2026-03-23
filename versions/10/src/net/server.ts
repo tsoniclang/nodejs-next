@@ -7,7 +7,8 @@
  * Method signatures are correct; implementations that require OS interop use
  * TODO placeholders.
  */
-import { EventEmitter } from "../events-module.ts";
+import { EventEmitter, toEventListener } from "../events-module.ts";
+import type { int } from "@tsonic/core/types.js";
 import type { ListenOptions, ServerOpts } from "./options.ts";
 import type { Socket } from "./socket.ts";
 
@@ -16,8 +17,8 @@ import type { Socket } from "./socket.ts";
  */
 export class Server extends EventEmitter {
   private _listening: boolean = false;
-  private _maxConnections: number = 0;
-  private _connections: number = 0;
+  private _maxConnections: int = 0;
+  private _connections: int = 0;
   private readonly _allowHalfOpen: boolean;
   private readonly _pauseOnConnect: boolean;
 
@@ -31,14 +32,20 @@ export class Server extends EventEmitter {
   /**
    * The maximum number of connections.
    */
-  public get maxConnections(): number {
+  public get maxConnections(): int {
     return this._maxConnections;
   }
 
-  public set maxConnections(value: number) {
+  public set maxConnections(value: int) {
     this._maxConnections = value;
   }
 
+  constructor();
+  constructor(connectionListener: (socket: Socket) => void);
+  constructor(
+    options: ServerOpts,
+    connectionListener?: (socket: Socket) => void
+  );
   constructor(
     optionsOrListener?: ServerOpts | ((socket: Socket) => void),
     connectionListener?: ((socket: Socket) => void)
@@ -49,13 +56,17 @@ export class Server extends EventEmitter {
       // Server(connectionListener)
       this._allowHalfOpen = false;
       this._pauseOnConnect = false;
-      this.on("connection", optionsOrListener);
+      this.on("connection", (...args: unknown[]) => {
+        optionsOrListener(args[0] as Socket);
+      });
     } else {
       // Server(options?, connectionListener?)
       this._allowHalfOpen = optionsOrListener?.allowHalfOpen ?? false;
       this._pauseOnConnect = optionsOrListener?.pauseOnConnect ?? false;
       if (connectionListener !== undefined) {
-        this.on("connection", connectionListener);
+        this.on("connection", (...args: unknown[]) => {
+          connectionListener(args[0] as Socket);
+        });
       }
     }
   }
@@ -64,30 +75,30 @@ export class Server extends EventEmitter {
    * Start a server listening for connections.
    */
   public listen(
-    port: number,
+    port: int,
     hostname: string,
-    backlog: number,
+    backlog: int,
     listeningListener?: () => void
   ): Server;
   public listen(
-    port: number,
+    port: int,
     hostname: string,
     listeningListener?: () => void
   ): Server;
   public listen(
-    port: number,
-    backlog: number,
+    port: int,
+    backlog: int,
     listeningListener?: () => void
   ): Server;
-  public listen(port: number, listeningListener?: () => void): Server;
+  public listen(port: int, listeningListener?: () => void): Server;
   public listen(
     options: ListenOptions,
     listeningListener?: () => void
   ): Server;
   public listen(
-    portOrOptions: number | ListenOptions,
-    hostnameOrBacklogOrListener?: string | number | (() => void),
-    backlogOrListener?: number | (() => void),
+    portOrOptions: int | ListenOptions,
+    hostnameOrBacklogOrListener?: string | int | (() => void),
+    backlogOrListener?: int | (() => void),
     listeningListener?: () => void
   ): Server {
     if (typeof portOrOptions === "object") {
@@ -99,8 +110,9 @@ export class Server extends EventEmitter {
           : undefined;
 
       if (options.port !== undefined) {
+        const requestedPort = options.port;
         return this.listenInternal(
-          options.port,
+          requestedPort,
           options.host,
           options.backlog ?? 511,
           listener
@@ -162,9 +174,9 @@ export class Server extends EventEmitter {
   }
 
   private listenInternal(
-    _port: number,
+    _port: int,
     _hostname: string | undefined,
-    _backlog: number,
+    _backlog: int,
     listeningListener: (() => void) | undefined
   ): Server {
     if (this._listening) {
@@ -172,7 +184,7 @@ export class Server extends EventEmitter {
     }
 
     if (listeningListener !== undefined) {
-      this.once("listening", listeningListener);
+      this.once("listening", toEventListener(listeningListener)!);
     }
 
     // TODO: Create TcpListener and start accepting connections via OS interop.
@@ -207,7 +219,10 @@ export class Server extends EventEmitter {
     // TODO: Stop the TcpListener via OS interop
 
     if (callback !== undefined) {
-      this.once("close", () => callback(undefined));
+      this.once(
+        "close",
+        toEventListener(() => callback(undefined))!
+      );
     }
 
     this.emit("close");
@@ -228,7 +243,7 @@ export class Server extends EventEmitter {
    * Asynchronously get the number of concurrent connections on the server.
    */
   public getConnections(
-    callback: (err: Error | undefined, count: number) => void
+    callback: (err: Error | undefined, count: int) => void
   ): void {
     callback(undefined, this._connections);
   }

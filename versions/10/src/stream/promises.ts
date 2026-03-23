@@ -4,7 +4,10 @@
  * Baseline: nodejs-clr/src/nodejs/stream/promises.cs
  */
 import { Stream } from "./stream.ts";
-import { finished as finishedCb, pipeline as pipelineCb } from "./utilities.ts";
+import {
+  finished as finishedCb,
+  pipelineStreams,
+} from "./utilities.ts";
 
 /**
  * Promise-based pipeline. Pipes streams together and returns a Promise that
@@ -16,15 +19,13 @@ export const pipeline = (...streams: Stream[]): Promise<void> => {
   }
 
   return new Promise<void>((resolve, reject) => {
-    const args: unknown[] = [...streams];
-    args.push((error: Error | undefined) => {
+    pipelineStreams(streams, (error: Error | undefined) => {
       if (error !== undefined) {
         reject(error);
       } else {
         resolve();
       }
     });
-    pipelineCb(...(args as [Stream, ...Stream[], (error: Error | undefined) => void]));
   });
 };
 

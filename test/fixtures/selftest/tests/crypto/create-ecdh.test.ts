@@ -15,8 +15,8 @@ export class CreateECDHTests {
     const bob = createECDH("secp256r1");
     alice.generateKeys();
     bob.generateKeys();
-    const aliceSecret = alice.computeSecret(bob.getPublicKey() as Uint8Array);
-    const bobSecret = bob.computeSecret(alice.getPublicKey() as Uint8Array);
+    const aliceSecret = alice.computeSecret(bob.getPublicKey() as unknown as Uint8Array);
+    const bobSecret = bob.computeSecret(alice.getPublicKey() as unknown as Uint8Array);
     Assert.Equal(aliceSecret, bobSecret);
   }
 
@@ -45,8 +45,8 @@ export class CreateECDHTests {
     const bob = createECDH("secp256r1");
     alice.generateKeys();
     bob.generateKeys();
-    const aliceSecretHex = alice.computeSecret(bob.getPublicKey() as Uint8Array, "hex");
-    const bobSecretHex = bob.computeSecret(alice.getPublicKey() as Uint8Array, "hex");
+    const aliceSecretHex = alice.computeSecret(bob.getPublicKey() as unknown as Uint8Array, "hex");
+    const bobSecretHex = bob.computeSecret(alice.getPublicKey() as unknown as Uint8Array, "hex");
     Assert.Equal(aliceSecretHex, bobSecretHex);
   }
 
@@ -73,8 +73,8 @@ export class CreateECDHTests {
     const bob = createECDH("secp256k1");
     const alicePublic = alice.generateKeys();
     const bobPublic = bob.generateKeys();
-    const aliceShared = alice.computeSecret(bobPublic as Uint8Array);
-    const bobShared = bob.computeSecret(alicePublic as Uint8Array);
+    const aliceShared = alice.computeSecret(bobPublic as unknown as Uint8Array);
+    const bobShared = bob.computeSecret(alicePublic as unknown as Uint8Array);
     Assert.Equal(aliceShared, bobShared);
   }
 

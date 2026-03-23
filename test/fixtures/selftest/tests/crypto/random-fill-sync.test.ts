@@ -22,7 +22,7 @@ export class RandomFillSyncTests {
     const buffer = new Uint8Array(64);
     randomFillSync(buffer, 16 as int, 32 as int);
     for (let i = 0; i < 16; i++) {
-      Assert.Equal(0, buffer[i]);
+      Assert.True(buffer[i] === 0);
     }
     let hasNonZero = false;
     for (let i = 16; i < 48; i++) {

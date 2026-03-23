@@ -10,7 +10,14 @@
  */
 
 import type { int } from "@tsonic/core/types.js";
-import { EventEmitter } from "../events-module.ts";
+import { StreamReader } from "@tsonic/dotnet/System.IO.js";
+import type { HttpListenerRequest } from "@tsonic/dotnet/System.Net.js";
+import { Encoding } from "@tsonic/dotnet/System.Text.js";
+import {
+  EventEmitter,
+  toEventListener,
+  toUnaryEventListener,
+} from "../events-module.ts";
 
 /**
  * Represents an incoming HTTP request (server-side) or response (client-side).
@@ -22,17 +29,35 @@ export class IncomingMessage extends EventEmitter {
   private _httpVersion: string;
   private _statusCode: int | null;
   private _statusMessage: string | null;
-  private _headers: Map<string, string>;
+  private _headers: Record<string, string>;
   private _complete: boolean = false;
+  private readonly _nativeRequest: HttpListenerRequest | null;
+  private _bodyReadPromise: Promise<string> | null = null;
+  private _bodyText: string | null = null;
+  private _bodyEmitted: boolean = false;
 
-  constructor() {
+  constructor(request?: HttpListenerRequest | null) {
     super();
-    this._method = null;
-    this._url = null;
-    this._httpVersion = "1.1";
+    this._nativeRequest = request ?? null;
+    this._method = this._nativeRequest?.HttpMethod ?? null;
+    this._url = this._nativeRequest?.RawUrl ?? null;
+    this._httpVersion = this._nativeRequest?.ProtocolVersion.ToString() ?? "1.1";
     this._statusCode = null;
     this._statusMessage = null;
-    this._headers = new Map<string, string>();
+    this._headers = {};
+
+    if (this._nativeRequest !== null) {
+      for (const headerName of this._nativeRequest.Headers.AllKeys) {
+        if (headerName === undefined || headerName === null) {
+          continue;
+        }
+
+        const headerValue = this._nativeRequest.Headers.Get(headerName);
+        if (headerValue !== undefined && headerValue !== null) {
+          this._headers[(headerName as string).toLowerCase()] = headerValue;
+        }
+      }
+    }
   }
 
   /**
@@ -73,7 +98,7 @@ export class IncomingMessage extends EventEmitter {
   /**
    * Request/response headers object.
    */
-  public get headers(): Map<string, string> {
+  public get headers(): Record<string, string> {
     return this._headers;
   }
 
@@ -104,7 +129,7 @@ export class IncomingMessage extends EventEmitter {
     }
 
     if (callback !== undefined) {
-      this.once("timeout", callback);
+      this.once("timeout", toEventListener(callback)!);
     }
 
     // TODO: Implement actual timeout mechanism (requires OS timer substrate)
@@ -116,32 +141,31 @@ export class IncomingMessage extends EventEmitter {
    * In a full implementation, this would be a streaming interface.
    * @returns The body content as a string.
    */
-  public readAll(): Promise<string> {
-    // TODO: Implement body reading (requires OS network substrate)
-    this._complete = true;
-    this.emit("end");
-    return Promise.resolve("");
+  public async readAll(): Promise<string> {
+    const body = await this._ensureBodyLoaded();
+    this._emitLoadedBodyOnce(body);
+    return body;
   }
 
   /**
    * Event handler for 'data' event.
    */
   public onData(callback: (chunk: string) => void): void {
-    this.on("data", callback as (...args: unknown[]) => void);
+    this.on("data", toUnaryEventListener<string>(callback)!);
   }
 
   /**
    * Event handler for 'end' event.
    */
   public onEnd(callback: () => void): void {
-    this.on("end", callback);
+    this.on("end", toEventListener(callback)!);
   }
 
   /**
    * Event handler for 'close' event.
    */
   public onClose(callback: () => void): void {
-    this.on("close", callback);
+    this.on("close", toEventListener(callback)!);
   }
 
   // -- Internal setters for server/client construction --
@@ -172,7 +196,7 @@ export class IncomingMessage extends EventEmitter {
   }
 
   /** @internal */
-  public _setHeaders(headers: Map<string, string>): void {
+  public _setHeaders(headers: Record<string, string>): void {
     this._headers = headers;
   }
 
@@ -186,9 +210,76 @@ export class IncomingMessage extends EventEmitter {
    * @internal
    */
   public _emitBufferedClientBody(body: string): void {
+    this._bodyText = body;
+    this._emitLoadedBodyOnce(body);
+  }
+
+  /**
+   * Starts background body emission for server-side request listeners that use
+   * the stream/event API rather than `readAll()`.
+   * @internal
+   */
+  public _beginStreamingBody(): void {
+    void this._streamLoadedBody();
+  }
+
+  private async _streamLoadedBody(): Promise<void> {
+    const body = await this._ensureBodyLoaded();
+    this._emitLoadedBodyOnce(body);
+  }
+
+  private _ensureBodyLoaded(): Promise<string> {
+    if (this._bodyReadPromise !== null) {
+      return this._bodyReadPromise;
+    }
+
+    this._bodyReadPromise = this._loadBody();
+
+    return this._bodyReadPromise;
+  }
+
+  private async _loadBody(): Promise<string> {
+    if (this._bodyText !== null) {
+      return this._bodyText;
+    }
+
+    if (
+      this._nativeRequest === null ||
+      !this._nativeRequest.HasEntityBody
+    ) {
+      this._bodyText = "";
+      return this._bodyText;
+    }
+
+    const encoding = this._nativeRequest.ContentEncoding ?? Encoding.UTF8;
+    const reader = new StreamReader(
+      this._nativeRequest.InputStream,
+      encoding,
+      false,
+      1024 as int,
+      true
+    );
+
+    try {
+      this._bodyText = reader.ReadToEnd();
+    } finally {
+      reader.Dispose();
+    }
+
+    return this._bodyText;
+  }
+
+  private _emitLoadedBodyOnce(body: string): void {
+    if (this._bodyEmitted) {
+      return;
+    }
+
+    this._bodyEmitted = true;
+
     if (body.length > 0) {
       this.emit("data", body);
     }
+
     this._complete = true;
     this.emit("end");
     this.emit("close");

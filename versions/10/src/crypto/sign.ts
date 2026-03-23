@@ -3,13 +3,33 @@
  *
  * Baseline: nodejs-clr/src/nodejs/crypto/Sign.cs
  */
-import type { KeyObject } from "./key-object.ts";
+import {
+  DSA,
+  ECDsa,
+  RSA,
+  RSASignaturePadding,
+} from "@tsonic/dotnet/System.Security.Cryptography.js";
+import {
+  coercePrivateKeyObject,
+  KeyObject,
+  PrivateKeyObject,
+} from "./key-object.ts";
+import {
+  concatBytes,
+  computeHashBytes,
+  decodeInputBytes,
+  encodeOutputString,
+  fromByteArray,
+  toHashAlgorithmName,
+  toByteArray,
+} from "./crypto-helpers.ts";
 
 /**
  * The Sign class is a utility for generating signatures.
  */
 export class Sign {
   private readonly _algorithm: string;
+  private readonly _chunks: Uint8Array[] = [];
   private _finalized: boolean = false;
 
   public constructor(algorithm: string) {
@@ -19,15 +39,14 @@ export class Sign {
   /**
    * Updates the Sign content with the given data.
    */
-  public update(data: string, _inputEncoding?: string): Sign;
+  public update(data: string, inputEncoding?: string): Sign;
   public update(data: Uint8Array): Sign;
-  public update(data: string | Uint8Array, _inputEncoding?: string): Sign {
+  public update(data: string | Uint8Array, inputEncoding?: string): Sign {
     if (this._finalized) {
       throw new Error("Sign already finalized");
     }
 
-    // TODO: actual data buffering for signing
-    void data;
+    this._chunks.push(decodeInputBytes(data, inputEncoding ?? "utf8"));
     return this;
   }
 
@@ -50,15 +69,52 @@ export class Sign {
     }
 
     this._finalized = true;
-
-    // TODO: actual signing logic
-    void privateKey;
-    void this._algorithm;
+    const signature = signBytes(
+      this._algorithm,
+      coercePrivateKeyObject(privateKey),
+      concatBytes(...this._chunks),
+    );
 
     if (typeof outputEncoding === "string") {
-      return "";
+      return encodeOutputString(signature, outputEncoding);
     }
 
-    return new Uint8Array(0);
+    return signature;
   }
 }
+
+const signBytes = (
+  algorithm: string,
+  privateKey: PrivateKeyObject,
+  data: Uint8Array,
+): Uint8Array => {
+  if (privateKey.nativeKeyData instanceof RSA) {
+    return fromByteArray(
+      privateKey.nativeKeyData.SignData(
+        toByteArray(data),
+        toHashAlgorithmName(algorithm),
+        RSASignaturePadding.Pkcs1,
+      ),
+    );
+  }
+
+  if (privateKey.nativeKeyData instanceof DSA) {
+    const hash = computeHashBytes(algorithm, data);
+    return fromByteArray(
+      privateKey.nativeKeyData.CreateSignature(
+        toByteArray(hash),
+      ),
+    );
+  }
+
+  if (privateKey.nativeKeyData instanceof ECDsa) {
+    return fromByteArray(
+      privateKey.nativeKeyData.SignData(
+        toByteArray(data),
+        toHashAlgorithmName(algorithm),
+      ),
+    );
+  }
+
+  throw new Error("Unsupported private key for signing");
+};

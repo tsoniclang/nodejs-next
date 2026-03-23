@@ -31,7 +31,7 @@ export class EdDSAPublicKeyObject extends KeyObject {
     return null;
   }
 
-  public export(_options?: unknown): unknown {
+  protected exportCore(_options?: unknown): unknown {
     // TODO: actual EdDSA public key export in PEM/DER format
     return this._publicKeyData;
   }
@@ -62,7 +62,7 @@ export class EdDSAPrivateKeyObject extends KeyObject {
     return null;
   }
 
-  public export(_options?: unknown): unknown {
+  protected exportCore(_options?: unknown): unknown {
     // TODO: actual EdDSA private key export in PEM/DER format
     return this._privateKeyData;
   }

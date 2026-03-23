@@ -4,8 +4,18 @@
  * Baseline: nodejs-clr/src/nodejs/url/URLSearchParams.cs
  */
 
+import {
+  decodeURIComponent as jsDecodeURIComponent,
+  encodeURIComponent as jsEncodeURIComponent,
+} from "@tsonic/js/index.js";
+
+type SearchParamEntry = {
+  readonly name: string;
+  readonly value: string;
+};
+
 export class URLSearchParams {
-  private readonly params: Array<[string, string]> = [];
+  private readonly params: SearchParamEntry[] = [];
 
   get size(): number {
     return this.params.length;
@@ -18,23 +28,23 @@ export class URLSearchParams {
   }
 
   append(name: string, value: string): void {
-    this.params.push([name, value]);
+    this.params.push({ name, value });
   }
 
   set(name: string, value: string): void {
     // Remove all existing entries with this name
     for (let i = this.params.length - 1; i >= 0; i -= 1) {
-      if (this.params[i]![0] === name) {
+      if (this.params[i]!.name === name) {
         this.params.splice(i, 1);
       }
     }
-    this.params.push([name, value]);
+    this.params.push({ name, value });
   }
 
   get(name: string): string | null {
     for (let i = 0; i < this.params.length; i += 1) {
-      if (this.params[i]![0] === name) {
-        return this.params[i]![1];
+      if (this.params[i]!.name === name) {
+        return this.params[i]!.value;
       }
     }
     return null;
@@ -43,8 +53,8 @@ export class URLSearchParams {
   getAll(name: string): string[] {
     const result: string[] = [];
     for (let i = 0; i < this.params.length; i += 1) {
-      if (this.params[i]![0] === name) {
-        result.push(this.params[i]![1]);
+      if (this.params[i]!.name === name) {
+        result.push(this.params[i]!.value);
       }
     }
     return result;
@@ -52,8 +62,8 @@ export class URLSearchParams {
 
   has(name: string, value?: string): boolean {
     for (let i = 0; i < this.params.length; i += 1) {
-      if (this.params[i]![0] === name) {
-        if (value === undefined || this.params[i]![1] === value) {
+      if (this.params[i]!.name === name) {
+        if (value === undefined || this.params[i]!.value === value) {
           return true;
         }
       }
@@ -63,8 +73,8 @@ export class URLSearchParams {
 
   delete(name: string, value?: string): void {
     for (let i = this.params.length - 1; i >= 0; i -= 1) {
-      if (this.params[i]![0] === name) {
-        if (value === undefined || this.params[i]![1] === value) {
+      if (this.params[i]!.name === name) {
+        if (value === undefined || this.params[i]!.value === value) {
           this.params.splice(i, 1);
         }
       }
@@ -73,27 +83,27 @@ export class URLSearchParams {
 
   sort(): void {
     this.params.sort((a, b) => {
-      if (a[0] < b[0]) return -1;
-      if (a[0] > b[0]) return 1;
+      if (a.name < b.name) return -1;
+      if (a.name > b.name) return 1;
       return 0;
     });
   }
 
   keys(): string[] {
-    return this.params.map((p) => p[0]);
+    return this.params.map((p) => p.name);
   }
 
   values(): string[] {
-    return this.params.map((p) => p[1]);
+    return this.params.map((p) => p.value);
   }
 
   entries(): Array<[string, string]> {
-    return [...this.params];
+    return this.params.map((param) => [param.name, param.value]);
   }
 
   forEach(callback: (value: string, name: string) => void): void {
     for (let i = 0; i < this.params.length; i += 1) {
-      callback(this.params[i]![1], this.params[i]![0]);
+      callback(this.params[i]!.value, this.params[i]!.name);
     }
   }
 
@@ -104,9 +114,9 @@ export class URLSearchParams {
     const parts: string[] = [];
     for (let i = 0; i < this.params.length; i += 1) {
       parts.push(
-        encodeURIComponent(this.params[i]![0]) +
+        jsEncodeURIComponent(this.params[i]!.name) +
           "=" +
-          encodeURIComponent(this.params[i]![1])
+          jsEncodeURIComponent(this.params[i]!.value)
       );
     }
     return parts.join("&");
@@ -125,11 +135,11 @@ export class URLSearchParams {
       const pair = pairs[i]!;
       const eqIndex = pair.indexOf("=");
       if (eqIndex >= 0) {
-        const key = decodeURIComponent(pair.slice(0, eqIndex));
-        const value = decodeURIComponent(pair.slice(eqIndex + 1));
-        this.params.push([key, value]);
+        const key = jsDecodeURIComponent(pair.slice(0, eqIndex));
+        const value = jsDecodeURIComponent(pair.slice(eqIndex + 1));
+        this.params.push({ name: key, value });
       } else {
-        this.params.push([decodeURIComponent(pair), ""]);
+        this.params.push({ name: jsDecodeURIComponent(pair), value: "" });
       }
     }
   }

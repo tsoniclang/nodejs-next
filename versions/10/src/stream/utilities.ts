@@ -5,6 +5,72 @@
  */
 import { Stream } from "./stream.ts";
 
+type PipelineCallback = (error: Error | undefined) => void;
+
+export const pipelineStreams = (
+  streamList: Stream[],
+  callback?: PipelineCallback,
+): void => {
+  if (streamList.length < 2) {
+    throw new Error(
+      "pipeline requires at least a source and destination stream",
+    );
+  }
+
+  let completed = false;
+  const finish = (error: Error | undefined): void => {
+    if (completed) {
+      return;
+    }
+    completed = true;
+    callback?.(error);
+  };
+
+  try {
+    for (let i = 0; i < streamList.length - 1; i += 1) {
+      const source = streamList[i]!;
+      const dest = streamList[i + 1]!;
+
+      source.on("error", (...errorArgs: unknown[]) => {
+        const err = errorArgs[0];
+        const error =
+          err instanceof Error ? err : new Error(String(err));
+
+        for (let j = i; j < streamList.length; j += 1) {
+          streamList[j]!.destroy(error);
+        }
+
+        finish(error);
+      });
+
+      source.pipe(dest, {
+        end: i === streamList.length - 2,
+      });
+    }
+
+    const lastStream = streamList[streamList.length - 1]!;
+    lastStream.on("finish", (..._args: unknown[]) => {
+      finish(undefined);
+    });
+    lastStream.on("end", (..._args: unknown[]) => {
+      finish(undefined);
+    });
+    lastStream.on("error", (...errorArgs: unknown[]) => {
+      const err = errorArgs[0];
+      finish(err instanceof Error ? err : new Error(String(err)));
+    });
+  } catch (ex: unknown) {
+    const error = ex instanceof Error ? ex : new Error(String(ex));
+    for (const s of streamList) {
+      try {
+        s.destroy(error);
+      } catch {
+      }
+    }
+    finish(error);
+  }
+};
+
 /**
  * A method to pipe between streams forwarding errors and properly cleaning up.
  *
@@ -19,13 +85,13 @@ export const pipeline = (...args: unknown[]): void => {
   }
 
   // Check if last argument is a callback
-  let callback: ((error: Error | undefined) => void) | undefined;
+  let callback: PipelineCallback | undefined;
   const streamList: Stream[] = [];
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
     if (i === args.length - 1 && typeof arg === "function") {
-      callback = arg as (error: Error | undefined) => void;
+      callback = arg as PipelineCallback;
     } else if (arg instanceof Stream) {
       streamList.push(arg);
     } else {
@@ -33,68 +99,7 @@ export const pipeline = (...args: unknown[]): void => {
     }
   }
 
-  if (streamList.length < 2) {
-    throw new Error(
-      "pipeline requires at least a source and destination stream",
-    );
-  }
-
-  try {
-    // Pipe streams together
-    for (let i = 0; i < streamList.length - 1; i += 1) {
-      const source = streamList[i]!;
-      const dest = streamList[i + 1]!;
-
-      // Set up error handling
-      source.on("error", (err: unknown) => {
-        // Destroy remaining streams
-        for (let j = i; j < streamList.length; j += 1) {
-          streamList[j]!.destroy(
-            err instanceof Error ? err : new Error(String(err)),
-          );
-        }
-        if (callback !== undefined) {
-          callback(err instanceof Error ? err : new Error(String(err)));
-        }
-      });
-
-      // Pipe source to destination
-      source.pipe(dest, {
-        end: i === streamList.length - 2,
-      });
-    }
-
-    // Handle final stream completion
-    const lastStream = streamList[streamList.length - 1]!;
-    lastStream.on("finish", () => {
-      if (callback !== undefined) {
-        callback(undefined);
-      }
-    });
-    lastStream.on("end", () => {
-      if (callback !== undefined) {
-        callback(undefined);
-      }
-    });
-    lastStream.on("error", (err: unknown) => {
-      if (callback !== undefined) {
-        callback(err instanceof Error ? err : new Error(String(err)));
-      }
-    });
-  } catch (ex: unknown) {
-    // Clean up all streams on error
-    const error = ex instanceof Error ? ex : new Error(String(ex));
-    for (const s of streamList) {
-      try {
-        s.destroy(error);
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
-    if (callback !== undefined) {
-      callback(error);
-    }
-  }
+  pipelineStreams(streamList, callback);
 };
 
 /**
@@ -110,7 +115,7 @@ export const finished = (
 ): void => {
   let called = false;
 
-  const onFinished = (error: Error | undefined): void => {
+  function onFinished(error: Error | undefined): void {
     if (called) {
       return;
     }
@@ -122,24 +127,29 @@ export const finished = (
     stream.removeListener("close", onClose);
 
     callback(error);
-  };
+  }
 
-  const onFinish = (): void => {
+  function onFinish(..._args: unknown[]): void {
     onFinished(undefined);
-  };
-  const onEnd = (): void => {
+  }
+
+  function onEnd(..._args: unknown[]): void {
     onFinished(undefined);
-  };
-  const onError = (err: unknown): void => {
+  }
+
+  function onError(...args: unknown[]): void {
+    const err = args[0];
     onFinished(err instanceof Error ? err : new Error(String(err)));
-  };
-  const onClose = (hadError?: boolean): void => {
+  }
+
+  function onClose(...args: unknown[]): void {
+    const hadError = args.length > 0 && args[0] === true;
     onFinished(
-      hadError === true
+      hadError
         ? new Error("Stream closed with error")
         : undefined,
     );
-  };
+  }
 
   stream.on("finish", onFinish);
   stream.on("end", onEnd);

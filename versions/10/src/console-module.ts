@@ -1,3 +1,7 @@
+/// <reference path="../globals.d.ts" />
+
+import type {} from "./type-bootstrap.js";
+
 import { Console as DotnetConsole } from "@tsonic/dotnet/System.js";
 import { Stopwatch } from "@tsonic/dotnet/System.Diagnostics.js";
 
@@ -62,70 +66,70 @@ export class ConsoleConstructor {
   ) {}
 
   public assert(value: boolean, message?: string, ...optionalParams: unknown[]): void {
-    console.assert(value, message, ...optionalParams);
+    consoleModuleInstance.assert(value, message, ...optionalParams);
   }
   public clear(): void {
-    console.clear();
+    consoleModuleInstance.clear();
   }
   public count(label?: string): void {
-    console.count(label);
+    consoleModuleInstance.count(label);
   }
   public countReset(label?: string): void {
-    console.countReset(label);
+    consoleModuleInstance.countReset(label);
   }
   public debug(message?: unknown, ...optionalParams: unknown[]): void {
-    console.debug(message, ...optionalParams);
+    consoleModuleInstance.debug(message, ...optionalParams);
   }
   public dir(value?: unknown, ...options: unknown[]): void {
-    console.dir(value, ...options);
+    consoleModuleInstance.dir(value, ...options);
   }
   public dirxml(...data: unknown[]): void {
-    console.dirxml(...data);
+    consoleModuleInstance.dirxml(...data);
   }
   public error(message?: unknown, ...optionalParams: unknown[]): void {
-    console.error(message, ...optionalParams);
+    consoleModuleInstance.error(message, ...optionalParams);
   }
   public group(...label: unknown[]): void {
-    console.group(...label);
+    consoleModuleInstance.group(...label);
   }
   public groupCollapsed(...label: unknown[]): void {
-    console.groupCollapsed(...label);
+    consoleModuleInstance.groupCollapsed(...label);
   }
   public groupEnd(): void {
-    console.groupEnd();
+    consoleModuleInstance.groupEnd();
   }
   public info(message?: unknown, ...optionalParams: unknown[]): void {
-    console.info(message, ...optionalParams);
+    consoleModuleInstance.info(message, ...optionalParams);
   }
   public log(message?: unknown, ...optionalParams: unknown[]): void {
-    console.log(message, ...optionalParams);
+    consoleModuleInstance.log(message, ...optionalParams);
   }
   public profile(label?: string): void {
-    console.profile(label);
+    consoleModuleInstance.profile(label);
   }
   public profileEnd(label?: string): void {
-    console.profileEnd(label);
+    consoleModuleInstance.profileEnd(label);
   }
   public table(tabularData?: unknown, properties?: string[]): void {
-    console.table(tabularData, properties);
+    consoleModuleInstance.table(tabularData, properties);
   }
   public time(label?: string): void {
-    console.time(label);
+    consoleModuleInstance.time(label);
   }
   public timeEnd(label?: string): void {
-    console.timeEnd(label);
+    consoleModuleInstance.timeEnd(label);
   }
   public timeLog(label?: string, ...data: unknown[]): void {
-    console.timeLog(label, ...data);
+    consoleModuleInstance.timeLog(label, ...data);
   }
   public timeStamp(label?: string): void {
-    console.timeStamp(label);
+    consoleModuleInstance.timeStamp(label);
   }
   public trace(message?: unknown, ...optionalParams: unknown[]): void {
-    console.trace(message, ...optionalParams);
+    consoleModuleInstance.trace(message, ...optionalParams);
   }
   public warn(message?: unknown, ...optionalParams: unknown[]): void {
-    console.warn(message, ...optionalParams);
+    consoleModuleInstance.warn(message, ...optionalParams);
   }
 }
 
@@ -259,5 +263,7 @@ class ConsoleModule {
   public timeStamp(_label?: string): void {}
 }
 
-export const console = new ConsoleModule();
-export const Console: ConsoleConstructor = console.Console;
+const consoleModuleInstance = new ConsoleModule();
+
+export const console = consoleModuleInstance;
+export const Console: ConsoleConstructor = consoleModuleInstance.Console;

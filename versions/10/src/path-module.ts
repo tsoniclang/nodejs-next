@@ -1,3 +1,7 @@
+/// <reference path="../globals.d.ts" />
+
+import type {} from "./type-bootstrap.js";
+
 import { Directory, Path } from "@tsonic/dotnet/System.IO.js";
 import {
   OSPlatform,

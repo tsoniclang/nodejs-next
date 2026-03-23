@@ -69,12 +69,11 @@ export const mark = (
     throw new Error("Name cannot be null or empty");
   }
 
+  const requestedStartTime =
+    options !== null && options !== undefined ? options.startTime : undefined;
   const startTime =
-    options !== null &&
-    options !== undefined &&
-    options.startTime !== null &&
-    options.startTime !== undefined
-      ? options.startTime
+    requestedStartTime !== null && requestedStartTime !== undefined
+      ? requestedStartTime
       : now();
 
   const detail =

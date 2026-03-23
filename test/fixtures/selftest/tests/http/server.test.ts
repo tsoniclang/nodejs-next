@@ -10,7 +10,9 @@ import { attributes as A } from "@tsonic/core/lang.js";
 import { Assert, FactAttribute } from "xunit-types/Xunit.js";
 
 import type { int } from "@tsonic/core/types.js";
+import { HttpClient } from "@tsonic/dotnet/System.Net.Http.js";
 import {
+  AddressInfo,
   createServer,
   Server,
   ServerResponse,
@@ -59,14 +61,18 @@ export class HttpServerTests {
 
     server.listen(8080 as int, "127.0.0.1");
 
-    const addr = server.address();
+    const addr = server.address() as AddressInfo | null;
     Assert.NotNull(addr);
 
-    if (addr !== null) {
-      Assert.Equal(8080, addr.port);
-      Assert.Equal("127.0.0.1", addr.address);
-      Assert.Equal("IPv4", addr.family);
+    if (addr === null) {
+      server.close();
+      Assert.True(false);
+      return;
     }
+
+    Assert.Equal(8080, addr.port);
+    Assert.Equal("127.0.0.1", addr.address);
+    Assert.Equal("IPv4", addr.family);
 
     server.close();
   }
@@ -95,12 +101,78 @@ export class HttpServerTests {
       }
     );
 
-    server.listen(0 as int, "127.0.0.1", null, () => {
+    server.listen(0 as int, "127.0.0.1", () => {
       callbackInvoked = true;
     });
 
     Assert.True(callbackInvoked);
     server.close();
+  }
+
+  public async server_round_trips_real_http_requests(): Promise<void> {
+    const server = createServer(
+      (_req: IncomingMessage, res: ServerResponse) => {
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.end("pong");
+      }
+    );
+
+    server.listen(0 as int, "127.0.0.1");
+
+    const addr = server.address() as AddressInfo | null;
+    Assert.NotNull(addr);
+
+    if (addr === null) {
+      server.close();
+      Assert.True(false);
+      return;
+    }
+
+    const client = new HttpClient();
+
+    try {
+      const body = await client.GetStringAsync(
+        `http://127.0.0.1:${addr.port.toString()}/ping`
+      );
+
+      Assert.Equal("pong", body);
+    } finally {
+      client.Dispose();
+      server.close();
+    }
+  }
+
+  public async server_round_trips_localhost_when_host_is_unspecified(): Promise<void> {
+    const server = createServer(
+      (_req: IncomingMessage, res: ServerResponse) => {
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.end("pong");
+      }
+    );
+
+    server.listen(0 as int);
+
+    const addr = server.address() as AddressInfo | null;
+    Assert.NotNull(addr);
+
+    if (addr === null) {
+      server.close();
+      Assert.True(false);
+      return;
+    }
+
+    const client = new HttpClient();
+
+    try {
+      const body = await client.GetStringAsync(
+        `http://localhost:${addr.port.toString()}/ping`
+      );
+
+      Assert.Equal("pong", body);
+    } finally {
+      client.Dispose();
+      server.close();
+    }
   }
 
   public server_listen_with_out_of_range_port_throws(): void {

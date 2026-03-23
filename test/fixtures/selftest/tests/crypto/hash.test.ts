@@ -12,7 +12,7 @@ export class HashTests {
 
   public hash_static_hash_works(): void {
     const data = new Uint8Array([84, 101, 115, 116, 32, 100, 97, 116, 97]);
-    const result = hash("sha256", data, null);
+    const result = hash("sha256", data, undefined);
     Assert.Equal(32, result.length);
   }
 }

@@ -6,7 +6,7 @@ import {
   brotliDecompressSync,
 } from "@tsonic/nodejs/zlib.js";
 
-import { assertThrows, utf8Bytes } from "./helpers.ts";
+import { assertThrows, utf8Bytes, utf8String } from "./helpers.ts";
 
 /**
  * Baseline: nodejs-clr/tests/nodejs.Tests/zlib/brotliDecompressSync.tests.cs
@@ -30,7 +30,7 @@ export class Zlib_brotliDecompressSyncTests {
 
     const compressed = brotliCompressSync(original);
     const decompressed = brotliDecompressSync(compressed);
-    const resultText = new TextDecoder().decode(decompressed);
+    const resultText = utf8String(decompressed);
 
     Assert.Equal(originalText, resultText);
   }

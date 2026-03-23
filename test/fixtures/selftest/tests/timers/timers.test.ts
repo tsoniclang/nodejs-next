@@ -195,7 +195,7 @@ export class TimersTests {
 
     const signaled = resetEvent.Wait(20 as int);
     Assert.False(signaled);
-    Assert.Equal(0, executedCount);
+    Assert.True(executedCount === 0);
   }
 
   public clearImmediate_with_undefined_should_not_throw(): void {

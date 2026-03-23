@@ -1,6 +1,7 @@
 import { attributes as A } from "@tsonic/core/lang.js";
 import { Assert, FactAttribute } from "xunit-types/Xunit.js";
 
+import { Buffer } from "@tsonic/nodejs/buffer.js";
 import { createSocket } from "@tsonic/nodejs/dgram.js";
 import { assertThrows } from "./helpers.ts";
 
@@ -56,8 +57,7 @@ export class SendTests {
     const addr = server.address();
     const client = createSocket("udp4");
 
-    const encoder = new TextEncoder();
-    const buffer = encoder.encode("HelloWorld");
+    const buffer = Buffer.from("HelloWorld", "utf8").buffer;
     let sentBytes = 0;
 
     client.send(buffer, 5, 5, addr.port, "127.0.0.1", (err: Error | null, bytes: number) => {

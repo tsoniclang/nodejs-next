@@ -8,9 +8,18 @@ export class URLPattern {
   private readonly regex: RegExp;
 
   constructor(pattern: string) {
-    // Escape regex special characters, then convert * to .*
-    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const withWildcards = escaped.replace(/\\\*/g, ".*");
+    let escaped = "";
+    for (let index = 0; index < pattern.length; index += 1) {
+      const char = pattern.charAt(index);
+      if (char === "*") {
+        escaped += ".*";
+      } else if (".+?^${}()|[]\\".includes(char)) {
+        escaped += `\\${char}`;
+      } else {
+        escaped += char;
+      }
+    }
+    const withWildcards = escaped;
     this.regex = new RegExp("^" + withWildcards + "$");
   }
 

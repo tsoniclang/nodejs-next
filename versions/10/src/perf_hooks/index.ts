@@ -3,6 +3,9 @@
  *
  * Baseline: nodejs-clr/src/nodejs/perf_hooks/
  */
+/// <reference path="../../globals.d.ts" />
+
+import type {} from "../type-bootstrap.js";
 
 export {
   PerformanceEntry,
@@ -34,18 +37,59 @@ export {
 export type { MarkOptions, MeasureOptions } from "./performance.ts";
 
 import * as performanceModule from "./performance.ts";
+import type { MarkOptions, MeasureOptions } from "./performance.ts";
+import type {
+  PerformanceEntry,
+  PerformanceMark,
+  PerformanceMeasure,
+} from "./performance-entry.ts";
+
+class PerformanceApi {
+  public now(): number {
+    return performanceModule.now();
+  }
+
+  public mark(
+    name: string,
+    options?: MarkOptions | null,
+  ): PerformanceMark {
+    return performanceModule.mark(name, options);
+  }
+
+  public measure(
+    name: string,
+    startOrOptions?: string | MeasureOptions | null,
+    endMark?: string | null,
+  ): PerformanceMeasure {
+    return performanceModule.measure(name, startOrOptions, endMark);
+  }
+
+  public getEntries(): PerformanceEntry[] {
+    return performanceModule.getEntries();
+  }
+
+  public getEntriesByName(
+    name: string,
+    type?: string | null,
+  ): PerformanceEntry[] {
+    return performanceModule.getEntriesByName(name, type);
+  }
+
+  public getEntriesByType(type: string): PerformanceEntry[] {
+    return performanceModule.getEntriesByType(type);
+  }
+
+  public clearMarks(name?: string | null): void {
+    performanceModule.clearMarks(name);
+  }
+
+  public clearMeasures(name?: string | null): void {
+    performanceModule.clearMeasures(name);
+  }
+}
 
 /**
  * The performance object — a namespace-like re-export of the performance functions
  * matching Node.js `perf_hooks.performance`.
  */
-export const performance = {
-  now: performanceModule.now,
-  mark: performanceModule.mark,
-  measure: performanceModule.measure,
-  getEntries: performanceModule.getEntries,
-  getEntriesByName: performanceModule.getEntriesByName,
-  getEntriesByType: performanceModule.getEntriesByType,
-  clearMarks: performanceModule.clearMarks,
-  clearMeasures: performanceModule.clearMeasures,
-};
+export const performance: PerformanceApi = new PerformanceApi();

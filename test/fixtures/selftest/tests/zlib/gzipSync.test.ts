@@ -26,8 +26,8 @@ export class Zlib_gzipSyncTests {
     const compressed = gzipSync(data);
 
     // Gzip files start with 0x1f 0x8b
-    Assert.Equal(0x1f, compressed[0]!);
-    Assert.Equal(0x8b, compressed[1]!);
+    Assert.True(compressed[0] === 0x1f);
+    Assert.True(compressed[1] === 0x8b);
   }
 
   public gzipSync_WithCompressionLevel_ShouldWork(): void {

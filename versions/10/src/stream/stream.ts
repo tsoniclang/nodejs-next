@@ -6,11 +6,26 @@
  */
 import { EventEmitter } from "../events-module.ts";
 
-import type { Readable } from "./readable.ts";
-import type { Writable } from "./writable.ts";
-import type { Duplex } from "./duplex.ts";
+type PipeReadable = {
+  on(eventName: string, listener: (...args: unknown[]) => void): unknown;
+  resume(): unknown;
+};
+
+type PipeWritable = {
+  write(chunk: unknown): unknown;
+  end(): unknown;
+  emit(eventName: string, ...args: unknown[]): boolean;
+};
 
 export class Stream extends EventEmitter {
+  public write(_chunk: unknown): unknown {
+    return undefined;
+  }
+
+  public end(): unknown {
+    return undefined;
+  }
+
   /**
    * Pipes the output of this readable stream into a writable stream
    * destination.
@@ -21,30 +36,34 @@ export class Stream extends EventEmitter {
    *   Default is true.
    * @returns The destination stream.
    */
-  public pipe<T extends Stream>(
-    destination: T,
+  public pipe(
+    destination: Stream,
     options?: { readonly end?: boolean },
-  ): T {
-    const self = this as unknown as Readable;
+  ): Stream {
+    const writableDestination = destination as unknown as PipeWritable;
     const end = options?.end !== false;
 
-    self.on("data", (chunk: unknown) => {
-      (destination as unknown as Writable).write(chunk);
+    this.on("data", (...args: unknown[]) => {
+      writableDestination.write(args[0]);
     });
 
     if (end) {
-      self.on("end", () => {
-        (destination as unknown as Writable).end();
+      this.on("end", (..._args: unknown[]) => {
+        writableDestination.end();
       });
     }
 
-    self.on("error", (err: unknown) => {
-      destination.emit("error", err);
+    this.on("error", (...args: unknown[]) => {
+      writableDestination.emit("error", args[0]);
     });
 
-    self.resume();
+    this.resume();
 
     return destination;
+  }
+
+  public resume(): Stream {
+    return this;
   }
 
   /**

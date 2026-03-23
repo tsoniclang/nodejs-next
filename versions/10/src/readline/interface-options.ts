@@ -5,6 +5,7 @@
  */
 import type { Readable } from "../stream/readable.ts";
 import type { Writable } from "../stream/writable.ts";
+import type { int } from "@tsonic/core/types.js";
 
 export class InterfaceOptions {
   /** The Readable stream to listen to. Required. */
@@ -26,7 +27,7 @@ export class InterfaceOptions {
   public history: string[] | undefined = undefined;
 
   /** Maximum number of history lines retained. Default is 30. */
-  public historySize: number | undefined = undefined;
+  public historySize: int | undefined = undefined;
 
   /**
    * If true, when a new input line equals an old one in history, removes the
@@ -35,10 +36,10 @@ export class InterfaceOptions {
   public removeHistoryDuplicates: boolean | undefined = undefined;
 
   /** The duration readline will wait for a character (in ms). */
-  public escapeCodeTimeout: number | undefined = undefined;
+  public escapeCodeTimeout: int | undefined = undefined;
 
   /** The number of spaces a tab is equal to. Default is 8. */
-  public tabSize: number | undefined = undefined;
+  public tabSize: int | undefined = undefined;
 }
 
 /**
@@ -46,8 +47,8 @@ export class InterfaceOptions {
  */
 export class CursorPosition {
   /** Row position (0-based). */
-  public rows: number = 0;
+  public rows: int = 0;
 
   /** Column position (0-based). */
-  public cols: number = 0;
+  public cols: int = 0;
 }

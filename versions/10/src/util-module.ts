@@ -1,3 +1,7 @@
+/// <reference path="../globals.d.ts" />
+
+import type {} from "./type-bootstrap.js";
+
 import { Environment } from "@tsonic/dotnet/System.js";
 
 export type DebugLogFunction = (message: string, ...args: unknown[]) => void;

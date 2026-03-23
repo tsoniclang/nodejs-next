@@ -83,8 +83,8 @@ export class QueryStringTests {
 
     const values = result["foo"] as string[];
     Assert.Equal(2, values.length);
-    Assert.Contains("bar", values);
-    Assert.Contains("baz", values);
+    Assert.True(values.includes("bar"));
+    Assert.True(values.includes("baz"));
   }
 
   public parse_ShouldHandleEmptyString(): void {

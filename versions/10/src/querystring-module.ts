@@ -3,6 +3,14 @@
  *
  * Baseline: nodejs-clr/src/nodejs/querystring/querystring.cs
  */
+/// <reference path="../globals.d.ts" />
+
+import type {} from "./type-bootstrap.js";
+
+import {
+  decodeURIComponent as jsDecodeURIComponent,
+  encodeURIComponent as jsEncodeURIComponent,
+} from "@tsonic/js/index.js";
 
 /**
  * Performs URL percent-encoding on the given string.
@@ -11,7 +19,7 @@ export const escape = (str: string): string => {
   if (str === null || str === undefined || str.length === 0) {
     return str;
   }
-  return encodeURIComponent(str);
+  return jsEncodeURIComponent(str);
 };
 
 /**
@@ -22,7 +30,7 @@ export const unescape = (str: string): string => {
     return str;
   }
   try {
-    return decodeURIComponent(str);
+    return jsDecodeURIComponent(str);
   } catch {
     return str;
   }
@@ -68,8 +76,9 @@ export const stringify = (
     const value = obj[rawKey];
 
     if (Array.isArray(value)) {
-      for (let j = 0; j < value.length; j += 1) {
-        parts.push(key + actualEq + escape(convertToString(value[j])));
+      const values = value as unknown[];
+      for (let j = 0; j < values.length; j += 1) {
+        parts.push(key + actualEq + escape(convertToString(values[j])));
       }
     } else {
       parts.push(key + actualEq + escape(convertToString(value)));
@@ -107,7 +116,10 @@ export const parse = (
 
   const actualSep = sep ?? "&";
   const actualEq = eq ?? "=";
-  const effectiveMaxKeys = maxKeys === undefined ? 1000 : maxKeys;
+  let effectiveMaxKeys = 1000;
+  if (maxKeys !== undefined) {
+    effectiveMaxKeys = maxKeys;
+  }
 
   const pairs = input.split(actualSep);
   let count = 0;
@@ -133,9 +145,9 @@ export const parse = (
     const existing = result[key];
     if (existing !== undefined) {
       if (Array.isArray(existing)) {
-        existing.push(value);
+        (existing as string[]).push(value);
       } else {
-        result[key] = [existing, value];
+        result[key] = [existing as string, value];
       }
     } else {
       result[key] = value;
@@ -150,9 +162,18 @@ export const parse = (
 /**
  * Alias for stringify().
  */
-export const encode = stringify;
+export const encode = (
+  obj: Record<string, unknown> | null | undefined,
+  sep?: string | null,
+  eq?: string | null
+): string => stringify(obj, sep, eq);
 
 /**
  * Alias for parse().
  */
-export const decode = parse;
+export const decode = (
+  str: string,
+  sep?: string | null,
+  eq?: string | null,
+  maxKeys?: number
+): Record<string, string | string[]> => parse(str, sep, eq, maxKeys);

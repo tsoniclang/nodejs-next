@@ -15,7 +15,7 @@ export class SpawnSyncReturns<T> {
   public pid: number = 0;
 
   /** Array containing the results from stdio output. */
-  public output: Array<T | null> = [];
+  public output: Array<T | null> = [] as Array<T | null>;
 
   /** The contents of stdout. */
   public stdout: T;

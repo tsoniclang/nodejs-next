@@ -1,3 +1,7 @@
+/// <reference path="../globals.d.ts" />
+
+import type {} from "./type-bootstrap.js";
+
 import { AssertionError } from "./assertion-error.ts";
 
 const isNumeric = (value: unknown): boolean => typeof value === "number";

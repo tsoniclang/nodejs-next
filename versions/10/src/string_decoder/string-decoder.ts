@@ -12,6 +12,8 @@
  * for environments that don't support the stream option.
  */
 
+import { bytesToString } from "../buffer/buffer-encoding.ts";
+
 export class StringDecoder {
   private readonly encoding: string;
   private pendingBytes: Uint8Array = new Uint8Array(0);
@@ -117,11 +119,11 @@ export class StringDecoder {
     }
 
     // Store incomplete bytes
-    this.pendingBytes = buffer.slice(boundary);
+    this.pendingBytes = this.copyRange(buffer, boundary, buffer.length);
     if (boundary === 0) {
       return "";
     }
-    return this.decodeAll(buffer.slice(0, boundary));
+    return this.decodeAll(this.copyRange(buffer, 0, boundary));
   }
 
   private writeUtf16le(buffer: Uint8Array): string {
@@ -130,12 +132,12 @@ export class StringDecoder {
     const completeBytes = buffer.length - (buffer.length % 2);
 
     if (completeBytes === 0) {
-      this.pendingBytes = buffer.slice(0);
+      this.pendingBytes = this.copyRange(buffer, 0, buffer.length);
       return "";
     }
 
     if (completeBytes < buffer.length) {
-      this.pendingBytes = buffer.slice(completeBytes);
+      this.pendingBytes = this.copyRange(buffer, completeBytes, buffer.length);
     } else {
       this.pendingBytes = new Uint8Array(0);
     }
@@ -150,16 +152,16 @@ export class StringDecoder {
         const pending = new Uint8Array(
           2 + (buffer.length - completeBytes)
         );
-        pending.set(buffer.slice(completeBytes - 2));
+        pending.set(this.copyRange(buffer, completeBytes - 2, buffer.length));
         this.pendingBytes = pending;
         if (completeBytes - 2 === 0) {
           return "";
         }
-        return this.decodeAll(buffer.slice(0, completeBytes - 2));
+        return this.decodeAll(this.copyRange(buffer, 0, completeBytes - 2));
       }
     }
 
-    return this.decodeAll(buffer.slice(0, completeBytes));
+    return this.decodeAll(this.copyRange(buffer, 0, completeBytes));
   }
 
   private findUtf8Boundary(buffer: Uint8Array): number {
@@ -207,12 +209,19 @@ export class StringDecoder {
       return this.decodeSingleByte(buffer);
     }
 
-    try {
-      const decoder = new TextDecoder(this.encoding, { fatal: false });
-      return decoder.decode(buffer);
-    } catch {
-      // Fallback for environments without TextDecoder
-      return this.decodeSingleByte(buffer);
+    return bytesToString(buffer, this.encoding, 0, buffer.length);
+  }
+
+  private copyRange(buffer: Uint8Array, start: number, end: number): Uint8Array {
+    const result = new Uint8Array(end - start);
+    let targetIndex = 0;
+    for (let index = 0; index < buffer.length; index += 1) {
+      if (index < start || index >= end) {
+        continue;
+      }
+      result[targetIndex] = buffer[index]!;
+      targetIndex += 1;
     }
+    return result;
   }
 }

@@ -4,6 +4,9 @@
  * Baseline: nodejs-clr/src/nodejs/net/BlockList.cs
  */
 
+import { Math as JSMath } from "@tsonic/js/index.js";
+import type { int } from "@tsonic/core/types.js";
+
 /**
  * Represents a socket address.
  */
@@ -97,8 +100,13 @@ const isInSubnet = (
     return false;
   }
 
-  const fullBytes = Math.floor(prefix / 8);
-  const remainingBits = prefix % 8;
+  let fullBytes: int = 0;
+  let remainingBits = prefix;
+
+  while (remainingBits >= 8) {
+    fullBytes = fullBytes + 1;
+    remainingBits -= 8;
+  }
 
   for (let i = 0; i < fullBytes; i = i + 1) {
     if (addrOctets[i] !== networkOctets[i]) {
@@ -163,13 +171,15 @@ export class BlockList {
       return true;
     }
 
-    for (const range of this.blockedRanges) {
+    for (let index = 0; index < this.blockedRanges.length; index += 1) {
+      const range = this.blockedRanges[index]!;
       if (range.type === type && isInRange(address, range.start, range.end)) {
         return true;
       }
     }
 
-    for (const subnet of this.blockedSubnets) {
+    for (let index = 0; index < this.blockedSubnets.length; index += 1) {
+      const subnet = this.blockedSubnets[index]!;
       if (
         subnet.type === type &&
         isInSubnet(address, subnet.network, subnet.prefix)
@@ -189,10 +199,12 @@ export class BlockList {
     for (const addr of this.blockedAddresses) {
       rules.push(addr);
     }
-    for (const range of this.blockedRanges) {
+    for (let index = 0; index < this.blockedRanges.length; index += 1) {
+      const range = this.blockedRanges[index]!;
       rules.push(`${range.start}-${range.end}`);
     }
-    for (const subnet of this.blockedSubnets) {
+    for (let index = 0; index < this.blockedSubnets.length; index += 1) {
+      const subnet = this.blockedSubnets[index]!;
       rules.push(`${subnet.network}/${String(subnet.prefix)}`);
     }
     return rules;

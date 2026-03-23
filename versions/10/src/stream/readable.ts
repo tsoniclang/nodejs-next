@@ -8,7 +8,7 @@ import type { int } from "@tsonic/core/types.js";
 import { Stream } from "./stream.ts";
 
 export class Readable extends Stream {
-  private readonly _buffer: unknown[] = [];
+  private _buffer: unknown[] = [];
   private _ended = false;
   private _flowing = false;
   private _encoding: string | undefined;
@@ -40,7 +40,7 @@ export class Readable extends Stream {
    * Number of bytes (or objects) in the queue ready to be read.
    */
   public get readableLength(): int {
-    return this._buffer.length as int;
+    return this._buffer.length;
   }
 
   /** Is true after destroy() has been called. */
@@ -197,7 +197,9 @@ export class Readable extends Stream {
     }
 
     this._destroyed = true;
-    this._buffer.length = 0;
+    while (this._buffer.length > 0) {
+      this._buffer.pop();
+    }
 
     super.destroy(error);
   }
