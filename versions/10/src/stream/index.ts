@@ -3,7 +3,6 @@
  *
  * Baseline: nodejs-clr/src/nodejs/stream/
  */
-/// <reference path="../../globals.d.ts" />
 
 import type {} from "../type-bootstrap.js";
 

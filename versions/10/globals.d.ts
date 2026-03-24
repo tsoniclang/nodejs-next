@@ -2,9 +2,9 @@ import type { byte, double, int, long } from "@tsonic/core/types.js";
 import type { IEnumerable_1 } from "@tsonic/dotnet/System.Collections.Generic/internal/index.js";
 import type { Byte, Comparison, Int32, Nullable } from "@tsonic/dotnet/System.js";
 import type {
-  Date as JSRuntimeDate,
-  Uint8Array as JSRuntimeUint8Array,
-} from "@tsonic/js/index/internal/index.js";
+  Date as NativeDate,
+  Uint8Array as NativeUint8Array,
+} from "@tsonic/js";
 
 declare global {
   class RangeError extends Error {
@@ -268,11 +268,11 @@ declare global {
     of<T>(...items: T[]): T[];
   }
 
-  interface Date extends JSRuntimeDate {
+  interface Date extends NativeDate {
   }
 
   interface Uint8Array
-    extends JSRuntimeUint8Array, ArrayLike<byte>, IEnumerable_1<Byte> {
+    extends NativeUint8Array, ArrayLike<byte>, IEnumerable_1<Byte> {
     readonly byteLength: int;
     readonly length: int;
     fill(value: byte, start?: int, end?: Nullable<Int32>): Uint8Array;

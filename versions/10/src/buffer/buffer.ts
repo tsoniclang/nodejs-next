@@ -8,8 +8,7 @@
  * Uint8Array, which is the natural JS equivalent.
  */
 
-import * as JSMath from "@tsonic/js/Math.js";
-import { BitConverter } from "@tsonic/dotnet/System.js";
+import { BitConverter, Math as DotnetMath } from "@tsonic/dotnet/System.js";
 import type { byte, int, long, ulong } from "@tsonic/core/types.js";
 
 import {
@@ -23,6 +22,14 @@ import {
 } from "./buffer-encoding.ts";
 
 class BufferInternals {
+  static toInt(value: number): int {
+    if (Number.isInteger(value) && value >= -2147483648 && value <= 2147483647) {
+      return value as int;
+    }
+
+    throw new RangeError("Expected Int32-compatible numeric value");
+  }
+
   static minInt(left: int, right: int): int {
     return left < right ? left : right;
   }
@@ -98,11 +105,11 @@ class BufferInternals {
   }
 
   static pow256(exponent: number): number {
-    return JSMath.pow(256, exponent);
+    return DotnetMath.Pow(256, exponent);
   }
 
   static pow2(exponent: number): number {
-    return JSMath.pow(2, exponent);
+    return DotnetMath.Pow(2, exponent);
   }
 
   static stripWhitespace(value: string): string {
@@ -1189,7 +1196,7 @@ export class Buffer {
     let v = value;
     for (let i = 0; i < byteLength; i += 1) {
       this._data[offset + i] = v & 0xff;
-      v = JSMath.floor(v / 256);
+      v = DotnetMath.Floor(v / 256);
     }
     return offset + byteLength;
   }
@@ -1208,7 +1215,7 @@ export class Buffer {
     let v = value < 0 ? value + BufferInternals.pow2(byteLength * 8) : value;
     for (let i = 0; i < byteLength; i += 1) {
       this._data[offset + i] = v & 0xff;
-      v = JSMath.floor(v / 256);
+      v = DotnetMath.Floor(v / 256);
     }
     return offset + byteLength;
   }
@@ -1223,7 +1230,7 @@ export class Buffer {
     let v = value;
     for (let i = byteLength - 1; i >= 0; i -= 1) {
       this._data[offset + i] = v & 0xff;
-      v = JSMath.floor(v / 256);
+      v = DotnetMath.Floor(v / 256);
     }
     return offset + byteLength;
   }
@@ -1242,7 +1249,7 @@ export class Buffer {
     let v = value < 0 ? value + BufferInternals.pow2(byteLength * 8) : value;
     for (let i = byteLength - 1; i >= 0; i -= 1) {
       this._data[offset + i] = v & 0xff;
-      v = JSMath.floor(v / 256);
+      v = DotnetMath.Floor(v / 256);
     }
     return offset + byteLength;
   }
@@ -1269,7 +1276,10 @@ export class Buffer {
 
   private writeHex(hex: string, offset: int, maxLength: int): number {
     const cleaned = BufferInternals.stripWhitespace(hex);
-    const bytesToWrite = Math.min(JSMath.floor(cleaned.length / 2), maxLength);
+    const wholeHexBytes = DotnetMath.Floor(cleaned.length / 2.0);
+    const bytesToWrite = BufferInternals.toInt(
+      wholeHexBytes < maxLength ? wholeHexBytes : maxLength
+    );
     for (let i = 0; i < bytesToWrite; i += 1) {
       this._data[offset + i] =
         parseInt(cleaned.substring(i * 2, i * 2 + 2), 16) ?? 0;

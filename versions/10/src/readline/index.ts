@@ -4,7 +4,6 @@
  *
  * Baseline: nodejs-clr/src/nodejs/readline/readline.cs
  */
-/// <reference path="../../globals.d.ts" />
 
 import type {} from "../type-bootstrap.js";
 

@@ -5,8 +5,8 @@
  * Baseline: nodejs-clr/src/nodejs/buffer/Buffer.encoding.cs
  */
 
-import * as JSMath from "@tsonic/js/Math.js";
 import type { byte, int } from "@tsonic/core/types.js";
+import { Convert, Math as DotnetMath } from "@tsonic/dotnet/System.js";
 import { UTF8Encoding } from "@tsonic/dotnet/System.Text.js";
 
 export type BufferEncoding =
@@ -26,6 +26,14 @@ export type BufferEncoding =
 const utf8 = new UTF8Encoding();
 
 const HEX_DIGITS = "0123456789abcdef";
+
+const toInt = (value: number): int => {
+  if (Number.isInteger(value) && value >= -2147483648 && value <= 2147483647) {
+    return value as int;
+  }
+
+  throw new RangeError("Expected Int32-compatible numeric value");
+};
 
 const toUint8Array = (bytes: byte[]): Uint8Array => {
   const result = new Uint8Array(bytes.length);
@@ -153,7 +161,7 @@ export const bytesToString = (
     case "ascii": {
       let result = "";
       for (let i = 0; i < slice.length; i += 1) {
-        result += String.fromCharCode(slice[i]! & 0x7f);
+        result += fromCharCode(toInt(slice[i]! & 0x7f));
       }
       return result;
     }
@@ -162,7 +170,7 @@ export const bytesToString = (
     case "binary": {
       let result = "";
       for (let i = 0; i < slice.length; i += 1) {
-        result += String.fromCharCode(slice[i]!);
+        result += fromCharCode(toInt(slice[i]!));
       }
       return result;
     }
@@ -171,7 +179,7 @@ export const bytesToString = (
     case "ucs2": {
       let result = "";
       for (let i = 0; i + 1 < slice.length; i += 2) {
-        result += String.fromCharCode(slice[i]! | (slice[i + 1]! << 8));
+        result += fromCharCode(toInt(slice[i]! | (slice[i + 1]! << 8)));
       }
       return result;
     }
@@ -213,7 +221,7 @@ export const byteLengthOfString = (
       return str.length * 2;
 
     case "hex":
-      return JSMath.floor(str.length / 2);
+      return toInt(DotnetMath.Floor(str.length / 2.0));
 
     case "base64":
     case "base64url": {
@@ -223,7 +231,7 @@ export const byteLengthOfString = (
         stripped = base64UrlToBase64(stripped);
       }
       const pad = stripped.endsWith("==") ? 2 : stripped.endsWith("=") ? 1 : 0;
-      return JSMath.floor((stripped.length * 3) / 4) - pad;
+      return toInt(DotnetMath.Floor((stripped.length * 3.0) / 4.0) - pad);
     }
 
     default:
@@ -350,3 +358,4 @@ export const base64ToBase64Url = (base64: string): string => {
   }
   return result;
 };
+const fromCharCode = (code: int): string => Convert.ToChar(code).toString();

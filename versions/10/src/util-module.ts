@@ -1,8 +1,8 @@
-/// <reference path="../globals.d.ts" />
 
 import type {} from "./type-bootstrap.js";
 
 import { Environment } from "@tsonic/dotnet/System.js";
+import { console as JSConsole } from "@tsonic/js";
 
 export type DebugLogFunction = (message: string, ...args: unknown[]) => void;
 
@@ -165,7 +165,7 @@ export function deprecate(
         : `[${code}] DeprecationWarning: ${message}`;
     if (!deprecationWarnings.has(warning)) {
       deprecationWarnings.add(warning);
-      console.error(warning);
+      JSConsole.error(warning);
     }
     return fn(...args);
   };
@@ -189,7 +189,7 @@ export const debuglog = (section: string): DebugLogFunction => {
   const pid = Environment.ProcessId;
   return (message: string, ...args: unknown[]): void => {
     const rendered = args.length > 0 ? format(message, ...args) : message;
-    console.error(`${section.toUpperCase()} ${String(pid)}: ${rendered}`);
+    JSConsole.error(`${section.toUpperCase()} ${String(pid)}: ${rendered}`);
   };
 };
 

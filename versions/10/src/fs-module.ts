@@ -1,4 +1,3 @@
-/// <reference path="../globals.d.ts" />
 
 import type {} from "./type-bootstrap.js";
 
@@ -50,9 +49,7 @@ const parseEncoding = (value?: string): Encoding => {
 const toUnixMilliseconds = (value: DateTime): number =>
   Number(new DateTimeOffset(value).ToUnixTimeMilliseconds());
 
-type JSDate = globalThis.Date;
-
-const toJsDate = (value: DateTime): JSDate =>
+const toJsDate = (value: DateTime): Date =>
   new Date(toUnixMilliseconds(value));
 
 const buildFileStats = (info: FileInfo): Stats =>
@@ -341,19 +338,19 @@ export class Stats {
   public readonly size: number;
   public readonly isFile: boolean;
   public readonly isDirectory: boolean;
-  public readonly atime: JSDate;
-  public readonly mtime: JSDate;
-  public readonly ctime: JSDate;
-  public readonly birthtime: JSDate;
+  public readonly atime: Date;
+  public readonly mtime: Date;
+  public readonly ctime: Date;
+  public readonly birthtime: Date;
 
   public constructor(
     size: number,
     isFile: boolean,
     isDirectory: boolean,
-    atime: JSDate,
-    mtime: JSDate,
-    ctime: JSDate,
-    birthtime: JSDate
+    atime: Date,
+    mtime: Date,
+    ctime: Date,
+    birthtime: Date
   ) {
     this.size = size;
     this.isFile = isFile;
