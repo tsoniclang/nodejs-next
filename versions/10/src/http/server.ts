@@ -13,7 +13,6 @@ import type { HttpListener, HttpListenerContext, IPEndPoint, IPAddress } from "@
 import { Dns, HttpListener as DotNetHttpListener, IPAddress as DotNetIPAddress } from "@tsonic/dotnet/System.Net.js";
 import { TcpListener } from "@tsonic/dotnet/System.Net.Sockets.js";
 import { Task } from "@tsonic/dotnet/System.Threading.Tasks.js";
-import { ProcessKeepAlive } from "@tsonic/js/index.js";
 import { IncomingMessage } from "./incoming-message.ts";
 import { ServerResponse } from "./server-response.ts";
 import type { IncomingMessage as IncomingMessageType } from "./incoming-message.ts";
@@ -23,6 +22,10 @@ import {
   toBinaryEventListener,
   toEventListener,
 } from "../events-module.ts";
+import {
+  acquireProcessKeepAlive,
+  releaseProcessKeepAlive,
+} from "../process-keepalive.ts";
 
 /**
  * Information about a server's bound address.
@@ -301,7 +304,7 @@ export class Server extends EventEmitter {
     );
     this._boundPath = null;
     this._listening = true;
-    ProcessKeepAlive.Acquire();
+    acquireProcessKeepAlive();
     this._keepAliveAcquired = true;
 
     Task.Run(() => {
@@ -351,7 +354,7 @@ export class Server extends EventEmitter {
     this._boundAddress = null;
     this._boundPath = null;
     if (this._keepAliveAcquired) {
-      ProcessKeepAlive.Release();
+      releaseProcessKeepAlive();
       this._keepAliveAcquired = false;
     }
     this.emit("close");
@@ -406,7 +409,7 @@ export class Server extends EventEmitter {
     this._boundAddress = null;
     this._boundPath = path;
     this._listening = true;
-    ProcessKeepAlive.Acquire();
+    acquireProcessKeepAlive();
     this._keepAliveAcquired = true;
     this.emit("listening");
 

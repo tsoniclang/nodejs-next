@@ -112,7 +112,7 @@ write_local_nuget_config "$WORK_DIR"
 npm --prefix "$WORK_DIR" install \
   "$PROJECT_ROOT/../core/versions/$DOTNET_MAJOR" \
   "$PROJECT_ROOT/../dotnet/versions/$DOTNET_MAJOR" \
-  "$PROJECT_ROOT/../js/versions/$DOTNET_MAJOR" >/dev/null
+  "$PROJECT_ROOT/../js-next/versions/$DOTNET_MAJOR" >/dev/null
 
 PACKAGE_TGZ="$(
   cd "$PROJECT_ROOT/versions/$DOTNET_MAJOR"

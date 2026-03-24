@@ -13,6 +13,10 @@
  */
 
 import { bytesToString } from "../buffer/buffer-encoding.ts";
+import { Convert } from "@tsonic/dotnet/System.js";
+
+const fromCharCode = (code: number): string =>
+  Convert.ToChar(code).toString();
 
 export class StringDecoder {
   private readonly encoding: string;
@@ -105,7 +109,7 @@ export class StringDecoder {
   private decodeSingleByte(buffer: Uint8Array): string {
     let result = "";
     for (let i = 0; i < buffer.length; i += 1) {
-      result += String.fromCharCode(buffer[i]!);
+      result += fromCharCode(buffer[i]!);
     }
     return result;
   }

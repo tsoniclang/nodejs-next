@@ -1,4 +1,4 @@
-/// <reference path="./globals.d.ts" />
-/// <reference path="./node-aliases.d.ts" />
+import "./globals.js";
+import "./node-aliases.js";
 
 export * from "./src/index.js";

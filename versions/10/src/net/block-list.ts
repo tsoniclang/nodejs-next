@@ -4,7 +4,7 @@
  * Baseline: nodejs-clr/src/nodejs/net/BlockList.cs
  */
 
-import { Math as JSMath } from "@tsonic/js/index.js";
+import { Math as JSMath } from "@tsonic/js";
 import type { int } from "@tsonic/core/types.js";
 
 /**
@@ -131,6 +131,7 @@ const isInSubnet = (
  */
 export class BlockList {
   private readonly blockedAddresses: Set<string> = new Set<string>();
+  private readonly blockedAddressList: string[] = [];
   private readonly blockedRanges: BlockedRange[] = [];
   private readonly blockedSubnets: BlockedSubnet[] = [];
 
@@ -138,6 +139,9 @@ export class BlockList {
    * Adds a rule to block the given IP address.
    */
   public addAddress(address: string, type: string = "ipv4"): void {
+    if (!this.blockedAddresses.has(address)) {
+      this.blockedAddressList.push(address);
+    }
     this.blockedAddresses.add(address);
   }
 
@@ -196,9 +200,7 @@ export class BlockList {
    */
   public getRules(): string[] {
     const rules: string[] = [];
-    for (const addr of this.blockedAddresses) {
-      rules.push(addr);
-    }
+    rules.push(...this.blockedAddressList);
     for (let index = 0; index < this.blockedRanges.length; index += 1) {
       const range = this.blockedRanges[index]!;
       rules.push(`${range.start}-${range.end}`);

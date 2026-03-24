@@ -1,4 +1,3 @@
-/// <reference path="../globals.d.ts" />
 
 import type {} from "./type-bootstrap.js";
 
@@ -51,7 +50,7 @@ const toUnixMilliseconds = (value: DateTime): number =>
   Number(new DateTimeOffset(value).ToUnixTimeMilliseconds());
 
 const toJsDate = (value: DateTime): Date =>
-  new Date(toUnixMilliseconds(value)) as unknown as Date;
+  new Date(toUnixMilliseconds(value));
 
 const buildFileStats = (info: FileInfo): Stats =>
   new Stats(
