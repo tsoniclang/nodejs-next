@@ -50,8 +50,10 @@ const parseEncoding = (value?: string): Encoding => {
 const toUnixMilliseconds = (value: DateTime): number =>
   Number(new DateTimeOffset(value).ToUnixTimeMilliseconds());
 
-const toJsDate = (value: DateTime): Date =>
-  new Date(toUnixMilliseconds(value)) as unknown as Date;
+type JSDate = globalThis.Date;
+
+const toJsDate = (value: DateTime): JSDate =>
+  new Date(toUnixMilliseconds(value));
 
 const buildFileStats = (info: FileInfo): Stats =>
   new Stats(
@@ -339,19 +341,19 @@ export class Stats {
   public readonly size: number;
   public readonly isFile: boolean;
   public readonly isDirectory: boolean;
-  public readonly atime: Date;
-  public readonly mtime: Date;
-  public readonly ctime: Date;
-  public readonly birthtime: Date;
+  public readonly atime: JSDate;
+  public readonly mtime: JSDate;
+  public readonly ctime: JSDate;
+  public readonly birthtime: JSDate;
 
   public constructor(
     size: number,
     isFile: boolean,
     isDirectory: boolean,
-    atime: Date,
-    mtime: Date,
-    ctime: Date,
-    birthtime: Date
+    atime: JSDate,
+    mtime: JSDate,
+    ctime: JSDate,
+    birthtime: JSDate
   ) {
     this.size = size;
     this.isFile = isFile;

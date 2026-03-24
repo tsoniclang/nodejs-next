@@ -5,7 +5,7 @@
  * Baseline: nodejs-clr/src/nodejs/buffer/Buffer.encoding.cs
  */
 
-import { Math as JSMath } from "@tsonic/js/index.js";
+import * as JSMath from "@tsonic/js/Math.js";
 import type { byte, int } from "@tsonic/core/types.js";
 import { UTF8Encoding } from "@tsonic/dotnet/System.Text.js";
 

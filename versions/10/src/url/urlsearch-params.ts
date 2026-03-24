@@ -7,7 +7,7 @@
 import {
   decodeURIComponent as jsDecodeURIComponent,
   encodeURIComponent as jsEncodeURIComponent,
-} from "@tsonic/js/index.js";
+} from "@tsonic/js/Globals.js";
 
 type SearchParamEntry = {
   readonly name: string;

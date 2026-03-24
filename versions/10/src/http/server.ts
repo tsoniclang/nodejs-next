@@ -13,7 +13,7 @@ import type { HttpListener, HttpListenerContext, IPEndPoint, IPAddress } from "@
 import { Dns, HttpListener as DotNetHttpListener, IPAddress as DotNetIPAddress } from "@tsonic/dotnet/System.Net.js";
 import { TcpListener } from "@tsonic/dotnet/System.Net.Sockets.js";
 import { Task } from "@tsonic/dotnet/System.Threading.Tasks.js";
-import { ProcessKeepAlive } from "@tsonic/js/index.js";
+import * as ProcessKeepAlive from "@tsonic/js/ProcessKeepAlive.js";
 import { IncomingMessage } from "./incoming-message.ts";
 import { ServerResponse } from "./server-response.ts";
 import type { IncomingMessage as IncomingMessageType } from "./incoming-message.ts";

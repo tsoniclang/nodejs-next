@@ -8,7 +8,7 @@
  * Uint8Array, which is the natural JS equivalent.
  */
 
-import { Math as JSMath } from "@tsonic/js/index.js";
+import * as JSMath from "@tsonic/js/Math.js";
 import { BitConverter } from "@tsonic/dotnet/System.js";
 import type { byte, int, long, ulong } from "@tsonic/core/types.js";
 

@@ -10,7 +10,7 @@ import type {} from "./type-bootstrap.js";
 import {
   decodeURIComponent as jsDecodeURIComponent,
   encodeURIComponent as jsEncodeURIComponent,
-} from "@tsonic/js/index.js";
+} from "@tsonic/js/Globals.js";
 
 /**
  * Performs URL percent-encoding on the given string.
